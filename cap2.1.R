@@ -23,6 +23,8 @@ library(circlize)
 library(magrittr)
 library(paletteer)
 library(ggthemes)
+library(corrplot)
+
 
 # RAW DATA PROCESSING ####
 
@@ -568,62 +570,21 @@ head(mat)
 
 mat.spp <- read.table ("mat.try") 
 
-# NEW DATA FRAMES and decriptive 2 ####
+# NEW DATA FRAMES and descriptive 2 ####
 
 setwd("/Users/juliag.dealedo/OneDrive - UAM/UAM_Doctorado/Capitulos/cap2/data/dataraw") 
-resu <- read.table("resumen")
+resu <- read.table ("resucap2")
 comp <- read.table("composition")
 etno <- read.table ("etno")
 mat.spp <- read.table ("mat.try") 
 mat.use <- read.table ("mat") 
 mat.cat <- read.table ("matplot") 
 
-
-
-
-mat <- read.table ("mat")
-mat1 <- mat
-str(mat1)
-etnorich <- rowSums(mat1)
-etnorich1 <- as.data.frame(etnorich)
-etnorich2 <- rownames_to_column(etnorich1, "Plot")
-resu4 <- merge (resu, etnorich2, by="Plot")
-resu4$Region
-com <- unique(cbind(etno55$Plot, etno55$Comunidad, etno55$Etnia))[,c(1,2,3)]
-colnames(com) <- c("Plot", "Comunidad", "Etnia")
-resu5<- merge(resu4, com, by="Plot", all=T)
-resu5$Plot <- as.numeric(resu5$Plot)
-resu6 <- arrange(resu5, Plot)
-resu7 <- resu6[-length(resu6$Plot),] #quitar la ultima con NAs
-
-
-# SAVE TABLES #
-write.table(resu7, "resucap2")
-write.table(mat, "usematrix")
-write.table(etno55, "etnodb")
-
-
 setwd("/Users/juliag.dealedo/OneDrive - UAM/UAM_Doctorado/Capitulos/cap2/data/dataraw") 
 dir()
 
-mat <- read.table ("mat")
-resu <- read.table ("resucap2")
-comp <- read.table("composition")
-etno <- read.table ("etno")
-matx <- read.table ("matcommunities") # per category
-
-
-
-
-
-
-
 # CORRELATION ####
-mat <- read.table ("mat")
-resu <- read.table ("resucap2")
-resu1 <- read.table ("resuclean")
-dir()
-library(corrplot)
+
 #choosing the parameters 
 divcor <- resu[,c(4:7,11,12,15:20)]
 #calculate the correlation
@@ -659,6 +620,8 @@ chulo <- corrplot(M, method="color", col=col(200),
                   diag=FALSE)
 
 chulo
+setwd("/Users/juliag.dealedo/OneDrive - UAM/UAM_Doctorado/Capitulos/cap2/data/dataraw") 
+
 jpeg("Correlation2.jpeg", res=600, height=49,
      width=45, pointsize=11, units="cm")
 
@@ -680,7 +643,6 @@ plot(resu$Longitud, resu$Species)
 plot(resu$Latitud, resu$Species)
 plot(resu$Latitud, resu$etnorich)
 
-xyplot(resu$Comunidad, resu$Species)
 colores <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
 
 boxplot(Species~Comunidad, data=resu, horizontal=F,axes=T, xlab="", ylab="", col=unique(as.factor(resu$Comunidad)))
@@ -691,9 +653,88 @@ boxplot(etnorich~Comunidad, data=resu, horizontal=F,axes=T, xlab="", ylab="", co
 
 
 
+mat.dist <- vegdist(mat.use, method="bray")
+resu
+
+compmat <- dcast(comp, Plot~Species, value.var="Species", fill=0)
+compmat <- column_to_rownames(compmat,var="Plot")
+comp.dist <- vegdist(compmat, method="bray")
+
+AICc.PERMANOVA <- function(adonis.model) {
+  if (!(adonis.model$aov.tab[1,1] >= 1))
+    stop("object not output of adonis {vegan} ")
+  RSS <- adonis.model$aov.tab[rownames(adonis.model$aov.tab) == "Residuals", "SumsOfSqs"]
+  MSE <- adonis.model$aov.tab[rownames(adonis.model$aov.tab) == "Residuals", "MeanSqs"]
+  k <- ncol(adonis.model$model.matrix)# + 1 # add one for error variance
+  nn <- nrow(adonis.model$model.matrix)
+  AIC <- 2*k + nn*log(RSS)
+  AIC.g <- 2*k + nn * (1 + log( 2 * pi * RSS / nn))
+  AIC.MSE <- 2*k + nn * log(MSE)
+  AIC.pi <- k + nn*(1 + log( 2*pi*RSS/(nn-k) )   )
+  AICc <- AIC + (2*k*(k + 1))/(nn - k - 1)
+  AICc.MSE <- AIC.MSE + (2*k*(k + 1))/(nn - k - 1)
+  AICc.pi <- AIC.pi + (2*k*(k + 1))/(nn - k - 1)
+  
+  output <- list("AIC" = AIC, "AIC.g" = AIC.g, "AICc" = AICc,
+                 "AIC.MSE" = AIC.MSE, "AICc.MSE" = AICc.MSE,
+                 "AIC.pi" = AIC.pi, "AICc.pi" = AICc.pi, "k" = k)
+  return(output)
+}
+
+adonis.model1<-adonis(mat.dist~Species,  method="bray", resu)
+adonis.model1.1<-adonis(mat.dist~Latitud,  method="bray", resu)
+adonis.model2<-adonis(mat.dist~Comunidad ,  method="bray", resu)
+adonis.model3<-adonis(mat.dist~Comunidad+Latitud,  method="bray", resu)
+adonis.model4<-adonis(mat.dist~Comunidad*Latitud,  method="bray", resu)
+adonis.model5<-adonis(mat.dist~Comunidad+Species+Latitud, method="bray", resu)
+adonis.model6<-adonis(mat.dist~Comunidad*Species+Comunidad*Latitud,  method="bray", resu)
+adonis.model7<-adonis(mat.dist~Comunidad*Species+Latitud,  method="bray", resu)
+adonis.model8<-adonis(mat.dist~Comunidad+Species*Latitud,  method="bray", resu)
+adonis.model9<-adonis(mat.dist~Comunidad*Species*Latitud,  method="bray", resu)
+
+c(AICc.PERMANOVA(adonis.model1)$AIC,
+  AICc.PERMANOVA(adonis.model1.1)$AIC,
+  AICc.PERMANOVA(adonis.model2)$AIC,
+  AICc.PERMANOVA(adonis.model3)$AIC,
+  AICc.PERMANOVA(adonis.model4)$AIC,
+  AICc.PERMANOVA(adonis.model5)$AIC,
+  AICc.PERMANOVA(adonis.model6)$AIC,
+  AICc.PERMANOVA(adonis.model7)$AIC,
+  AICc.PERMANOVA(adonis.model8)$AIC,
+  AICc.PERMANOVA(adonis.model9)$AIC)
+
+#la latitud y la riqueza de especies influencia la composicion de usos, pero lo hace de manera distinta dependiendo de la comunidad
+
+
+adonis.model6
 
 
 
+compMDS.use <-metaMDS(mat.use, distance="bray", k=2, trymax=100, autotransform=TRUE) ##k is the number of dimensions
+S.use <- paste("stress = ", round(compMDS.use$stress, 3))
+mat.dist.use <- vegdist(mat.use, method="bray")
+etno.ano.use <- with(resu, anosim(mat.dist.use, Comunidad, distance="bray"))
+R.use <- paste("R = ", round(etno.ano.use$statistic, 2))
+
+spectral <- brewer.pal(11, "Spectral")
+cols <- grid.col[as.factor(resu$Comunidad)]
+
+compMDSsp <- metaMDS(mat.use, distance="bray", k=2, trymax=100, autotransform=TRUE) # k is the number of dimensions
+grid.col = c(Aguapolo = "#A6CEE3", Bolivar = "#1F78B4", Dicaro="#B2DF8A", Guiyero="#33A02C", Infierno = "#FB9A99", SanCarlos = "#FF7F00",
+             NuevaVida = "#FDBF6F", Macahua = "#E31A1C", Tumupasa = "#CAB2D6", Yamino = "#6A3D9A")
+sp.br.NMS.rot <- MDSrotate(compMDSsp, vec=resu$Latitud)
+
+setwd("/Users/juliag.dealedo/OneDrive - UAM/UAM_Doctorado/Capitulos/cap2/figs")
+pdf("nmds.perma.pdf")
+plot(sp.br.NMS.rot$points, pch=21, cex=0.025*resu$Species, col="black", 
+     bg =alpha(cols,0.7),  cex.axis=1.5, cex.lab=1.5, xlab="NMDS1", ylab="NMDS2", xlim=c(-1.5,1.5), ylim=c(-1.5,1.5))
+#ordisurf(sp.br.NMS.rot ~ resu$Latitud, col="grey40", add=TRUE, cex=0.8, labcex=0.8, bs="tp", display="sites") 
+legend("bottomright", title="Communities", cex=1, pch=16, bg="black", col=grid.col, legend=names(grid.col),bty="n", inset = c(0, 0))
+mtext(R.use, side = 1, line =-2 , cex=1)
+mtext(S.use, side = 3, line =-3 , cex=1)
+dev.off()
+
+names(grid.col)
 
 # ANALYSIS PER SE ####
 
@@ -707,6 +748,11 @@ dune.dist <- vegdist(dune)
 dune.ano <- with(dune.env, anosim(dune.dist, Management))
 summary(dune.ano)
 
+# permanova example
+dune.dist <- vegdist(dune, method="bray")
+# default test by terms
+dune.div <- adonis2(dune ~ Management*A1, data = dune.env, permutations = 999, method="bray")
+dune.div
 
 # good one
 
@@ -723,11 +769,7 @@ mat.dist <- vegdist(mat)
 as.data.frame(mat.dist)
 etno.ano <- with(resu, anosim(mat.dist, Comunidad))
 summary(etno.ano)
-
-mat.dist <- vegdist(mat.spp)
-as.data.frame(mat.dist)
-etno.ano <- with(resu, anosim(mat.dist, Comunidad))
-summary(etno.ano)
+betadisper()
 
 
 # CHORDDIAGRAM ####
