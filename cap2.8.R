@@ -26,6 +26,11 @@ library(car)
 library(betareg)
 library(MuMIn)
 library(ComGenR)
+library(ggeffects)
+library(lme4)
+library(glmmTMB)
+library(aods3)
+library(performance)
 # Viz
 library(patchwork)
 library(randomcoloR)
@@ -118,35 +123,6 @@ use_dist <- column_to_rownames(use_dist, "Plot")
 
 
 
-# probando una cosa
-
-# 
-# df_etno2 <- as.data.frame(unique(cbind(etno$Comunidad, etno$Species, etno$Use)))
-# colnames(df_etno2) <- c("Comunidad", "Species", "Use")
-# df_etno3 <- df_etno2 %>% 
-#   group_by(Comunidad, Species) %>%
-#   filter (grepl ("CULTURAL", Use)) %>%
-#   dplyr::summarize(Uses = n_distinct(Use)) 
-# 
-# df_etno4 <- as.data.frame(unique(cbind(etno$Comunidad, etno$`Nombres comunes`, etno$`Uso textual según cuaderno de campo`, etno$Species, etno$Use)))
-# colnames(df_etno4) <- c("Comunidad","Name", "Text", "Species", "Use")
-# df_etno5 <- df_etno4 %>% 
-#   filter (grepl ("CULTURAL", Use)) %>%
-#   filter (Species=="Poulsenia armata") %>%
-#   filter (Comunidad=="Tumupasa")
-
-
-
-
-# unique_etno_plot <- as.data.frame(unique(cbind(etno$Plot, etno$Species, etno$Use)))
-# colnames(unique_etno_plot) <- c("Plot","Species", "Use")
-# unique_etno_plot$Plot <- as.numeric (unique_etno_plot$Plot)
-# 
-# use_dist <- reshape2::dcast(unique_etno_plot, Plot~Use, value.var="Species", fill=0)
-# 
-
-
-
 
 # 1. Knowledge distribution over among communities #
 ## 1.1. Does community have an effect in the difference in knowledge between plots?
@@ -191,19 +167,47 @@ grid.col = c( SanCarlos = "#FF7F00", Dicaro="#B2DF8A", Guiyero="#33A02C", Infier
 cols <- grid.col[as.factor(resu$Comunidad)]
 
 # Plot NMDS
-dev.off()
-setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/figs/figs_2023")
-svg("nmds_3.svg")
+# dev.off()
+# setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/figs/figs_2023")
+# svg("nmds_3.svg")
 #pdf("nmds_3.pdf", height=8,width=8, pointsize=12)
+useMDS <-metaMDS(use_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE) ##k is the number of dimensions
 
-plot(compMDS.use$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2")
+
+comp_dist <- reshape2::dcast(comp, Plot~Species, value.var="Species", fill=0)
+comp_dist <- column_to_rownames(comp_dist, var="Plot")
+abs_comp_dist <- as.matrix(comp_dist>0)*1
+
+compMDS <-metaMDS(abs_comp_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE) ##k is the number of dimensions
+
+
+useMDS <- MDSrotate(useMDS, vec=resu$Latitud)
+compMDS <- MDSrotate(compMDS, vec=resu$Latitud)
+
+
+plot(useMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2")
 legend("topleft", cex=0.8, pch=16, bg="black", col=unique(cols), legend=unique(resu$Comunidad), bty="n", inset = c(0, 0))
-ordihull(compMDS.use, resu$Comunidad, col=grid.col, draw="polygon", border="white")
-points(compMDS.use$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
-dev.off()
+ordihull(useMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
+orditorp (useMDS, display="sites")
+#points(useMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
+points(compMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
+ordihull(compMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
+orditorp (compMDS, display="sites", select=T)
+
+scrs <- scores(useMDS, display = 'sites')
+scrs <- cbind(as.data.frame(scrs), Comunidad = resu$Comunidad)
+cent_etno <- aggregate(cbind(NMDS1, NMDS2) ~ Comunidad, data = scrs, FUN = mean)
 
 
+scrs <- scores(compMDS, display = 'sites')
+scrs <- cbind(as.data.frame(scrs), Comunidad = resu$Comunidad)
+cent_comp <- aggregate(cbind(NMDS1, NMDS2) ~ Comunidad, data = scrs, FUN = mean)
 
+ggplot(data=cent_etno, aes(x=NMDS1, y=NMDS2, col=Comunidad))+
+  geom_point(size=5)+ theme_classic()+
+  geom_point(data=cent_comp, aes(x=NMDS1, y=NMDS2, col=Comunidad), shape=17, size=5)+ theme_classic()
+
+plot(cent_comp$NMDS1, cent_comp$NMDS2)
 
 ## 1.2. How many species are destined to each category per community?
 
@@ -334,34 +338,12 @@ plot_com <- na.omit(as.data.frame(unique(cbind(etno$Plot, etno$Comunidad))))
 colnames(plot_com) <- c("Plot", "Community")
 df <- merge(df, plot_com, by="Plot")
 # 
-# plot_com <- as.data.frame(unique(cbind(etno$Comunidad, etno$Etnia)))
-# plot_species <- aggregate(etno$Species, by=list(etno$Plot), function(x) length(na.omit(unique(x))))
-# #plot_use <- aggregate(etno$Use, by=list(etno$Plot), function(x) length(na.omit(unique(x))))
-# plot_use <- aggregate(df_etno4$Use, by=list(df_etno4$Plot), function(x) length(na.omit(unique(x))))
-# str(df_etno4)
-# plot_com <- as.data.frame(unique(cbind(etno$Plot, etno$Comunidad)))
-# plot_com$V1 <- as.numeric(plot_com$V1)
-# colnames(plot_com) <- c("Plot", "Community")
-# df <- merge(plot_species, plot_use, by="Group.1")
-# colnames(df) <- c("Plot", "Species", "Uses")
-# df$Plot <- as.numeric(df$Plot)
-# 
-# df <- merge (df, plot_com, by="Plot")
-# colnames(df) <- c("Plot", "Species", "Uses", "Community")
-# head(df)
-# str(df)
 
-
-
-library(lme4)
-library(glmmTMB)
-
-# models
 
 for1 <- "Uses_number ~ Species_number"
 for2 <- "Uses_number ~ (1|Community)"
 for3 <- "Uses_number ~ Species_number + (1|Community)"
-for4 <- "Uses_number ~ Species_number + (Species|Community)"
+for4 <- "Uses_number ~ Species_number + (Species_number|Community)"
 glm_p1 <- glm(for1, family=poisson(link = log), data = df)
 glm_p2 <- glmer (for2, family=poisson(link = log), data = df)
 glm_p3 <- glmer (for3, family=poisson(link = log), data = df)
@@ -377,95 +359,42 @@ glmer3 <- glmer.nb (for3, data = df) ### funciona y es mi preferido 4/4/23!!!!
 glmer4 <- glmer.nb (for4, data = df)
 
 AICc <- round(AIC(glmer1, glmer2, glmer3, glmer4), 2)
-library(aods3)
 gof(glmer3) # no oversidpersion
 
-
-predict(glmer3, df[4:6], se.fit = T, interval = "confidence")
-str(p0 <- predict(glmer3))            # fitted values
-str(p1 <- predict(glmer3,re.form=NA))  # fitted values, unconditional (level-0)
-newdata <- with(df, expand.grid(Uses=unique(Uses), Species=unique(Species)))
-str(p2 <- predict(glmer3,newdata))    # new data, all RE
-str(p3 <- predict(glmer3,newdata,re.form=NA)) # new data, level-0
-str(p4 <- predict(glmer3,newdata,re.form= ~(1|Community))) # explicitly specify RE
-stopifnot(identical(p2, p4))
-
-
-df$fit <- predict.glm(glmer3)   #Add model fits to dataframe
-predict.glm(glmer3, df, se.fit = T, interval = "confidence")
-
-
-
-par(mfcol=c(2,2))
-Res <- residuals(glmer3, type="pearson")
-Fit <- fitted(glmer3)
-par(mfrow=c(2,2))
-plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
-abline(h=0)
-plot(Res ~ df$Species, xlab="NAP", ylab="Residuals", main = "NAP") > abline(h=0)
-hist(Res, main="Histogram of residuals", xlab="Residuals")
-qqnorm(Res)
-qqline(Res)
-
-hist(df$Species)
-hist(df$Uses)
-
-
-par(mfcol=c(2,2))
-Res <- residuals(glm_p4, type="pearson")
-Fit <- fitted(glm_p4)
-par(mfrow=c(2,2))
-plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
-abline(h=0)
-plot(Res ~ df$Species, xlab="NAP", ylab="Residuals", main = "NAP") > abline(h=0)
-hist(Res, main="Histogram of residuals", xlab="Residuals")
-qqnorm(Res)
-qqline(Res)
-
-
-
-for1 <- "Uses ~ 1"
-for2 <- "Uses ~ Species"
-for3 <- "Uses ~ Community"
-for4 <- "Uses ~ Species*Community"
-for5 <- "Uses ~ Species+Community" 
-
-glm1 <- glm(Uses~1, data=df, family="poisson")
-glm2 <- glm(Uses~Species, data=df, family="poisson")
-glm3 <- glm(Uses~Community, data=df, family="poisson")
-glm4 <- glm(Uses~Species*Community, data=df, family="poisson")
-glm5 <- glm(Uses~Species+Community, data=df, family="poisson")
-
-
-AICc <- round(AIC(glm1, glm2, glm3, glm4, glm5), 2)
-Formulation <- c(for1, for2, for3, for4, for5)
-R2 <- round(c(pR2(glm1)['r2ML'], pR2(glm2)['r2ML'], pR2(glm3)['r2ML'], pR2(glm4)['r2ML'],pR2(glm5)['r2ML']),3)
-
-# Check residuals
-par(mfcol=c(2,2))
-Res <- residuals(glm5, type="pearson")
-Fit <- fitted(glm5)
-par(mfrow=c(2,2))
-plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
-abline(h=0)
-plot(Res ~ df$Species, xlab="NAP", ylab="Residuals", main = "NAP") > abline(h=0)
-hist(Res, main="Histogram of residuals", xlab="Residuals")
-qqnorm(Res)
-qqline(Res)
-
-
 # Table 1 - present on the manuscript
-table1 <- cbind(Formulation, AICc, R2)
-Table1 <- qflextable (table1)
+table1 <- cbind(Formulation, AICc)
+Table1 <- qflextable (glmer3)
 Table1
 #print(Table1,  preview="docx")
 
 
-Table2 <- rownames_to_column (as.data.frame(round(coef(summary(glm5)),4)))
+Table2 <- rownames_to_column (as.data.frame(round(coef(summary(glmer3)),4)))
 colnames(Table2)  <- c("Term", "Estimate", "SE", "z value", "p-value")
 Table3 <- qflextable(Table2)
 Table3
-#print(Table3,  preview="docx")
+
+
+
+prds <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = "random", ci.lvl = 0.10) 
+
+
+total_alpha <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = "random", ci.lvl = 0.10) %>% 
+  plot(add.data=T, ci=F, limit.range = TRUE, colors="Community", alpha=0.2)+  labs(x="Species richness", y ="Use diversity")+
+  scale_color_manual(values = pal)+
+  scale_fill_manual(values = pal)+
+  theme_classic() +
+  theme(legend.position = "none") +
+  ggtitle('Alpha diversity')
+ind_alpha <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = "random", ci.lvl = 0.10) %>% 
+   plot(add.data=T, ci=T, limit.range = TRUE, colors="Community", alpha=0.2)+
+   facet_wrap(~group)+   labs(x="Species richness", y ="Use diversity")+
+   scale_color_manual(values = pal)+
+   scale_fill_manual(values = pal)+
+   theme(legend.position = "none") +
+   ggtitle('Per community')+ theme_classic() +  theme(legend.position = "none") 
+library(patchwork)
+total_alpha/ind_alpha
+
 
 
 ## Processing beta 
@@ -482,15 +411,21 @@ get_permutations <- function(df){
 ds <- dt[, get_permutations(.SD), by = variables]
 colnames(ds) <- c("Comunidad", "Plot1", "Plot2")
 
+
+
 comp_dist <- reshape2::dcast(comp, Plot~Species, value.var="Species", fill=0)
 comp_dist <- column_to_rownames(comp_dist, var="Plot")
-
-etno_matrix_dist <- vegdist(use_dist, method="bray")
-comp_matrix_dist <- vegdist((comp_dist>0)*1, method="bray")
+abs_comp_dist <- as.matrix(comp_dist>0)*1
+View(abs_comp_dist)
+rowSums(abs_comp_dist)
+etno_matrix_dist <- vegdist(use_dist, method="jaccard")
+comp_matrix_dist <- vegdist(abs_comp_dist, method="jaccard")
+View(as.matrix(comp_matrix_dist))
+#betadiver(comp_matrix_dist)
 
 disetno <- etno_matrix_dist
 discomp <-comp_matrix_dist
-
+View(as.matrix(discomp))
 # Ethbobotany
 dist_etno <- as.matrix(disetno)
 dist_etno[upper.tri(dist_etno)] <- NA
@@ -512,108 +447,317 @@ dist_comp3 <- dist_comp2 %>%
                 comp = value)
 
 distances <- cbind(dist_etno3, dist_comp3)
+
 distances <- distances[,c(1,2,3,6)]
+plot(distances$comp, distances$etno)
 
 distances$Plot_comb <- paste(distances$Plot1, distances$Plot2)
+
 ds$Plot_comb <- paste(ds$Plot1, ds$Plot2)
-df_beta <- merge(ds, distances, by="Plot_comb")
+data_p <- merge(ds, distances, by="Plot_comb")
+plot(data_p$comp, data_p$etno)
+
+ds
+# get all the values TRY  NOT VALID!!
+colnames(dt) <- c("Plot1", "Community")
+data_p <- merge( distances, dt,by="Plot1")
+data_p <- merge( data_p, dt, by.x="Plot2", by.y="Plot1")
+data_p$group <- paste(data_p$Community.x, data_p$Community.y, sep="-")
+data_fin <- data_p[,c(8,3,4)]
+data_fin$resta <- data_fin$comp - data_fin$etno
+
+data_mean <- data_fin %>%  group_by(group) %>%
+  dplyr::summarize(mean_comp =median(comp),
+                   mean_etno = median(etno)) 
+
+
+data_mean$comp_rescaled <- (data_mean$mean_comp - min(data_mean$mean_comp)) / (max(data_mean$mean_comp) - min(data_mean$mean_comp))
+data_mean$etno_rescaled <- (data_mean$mean_etno - min(data_mean$mean_etno)) / (max(data_mean$mean_etno) - min(data_mean$mean_etno))
+
+
+data_melt <- reshape2::melt(data_mean[,c(1,4,5)]) 
+data_melt <- reshape2::melt(data_mean[,c(1,2,3)]) 
+
+bargraph <- ggplot(data = data_melt) +
+  geom_bar(aes(x = value,
+               y = reorder(group, -value),
+               fill = variable,
+               color = variable),
+           stat = "identity",
+           position="fill")+ theme_classic()
+  bargraph
+
+
+
+ indices <- df$Community
+variables <- df$Plot
+dt <- data.table(indices, variables)
+
+get_permutations <- function(df){
+  perm <- permutations(nrow(unique(df[,1])), 2, df$indices)
+  as.data.table(perm)
+}
+
+ds <- dt[, get_permutations(.SD), by = variables]
+colnames(ds) <- c("Comunidad", "Plot1", "Plot2")
+
+
+
+
+mod <- glmmTMB(data = data, formula = etno ~ comp + (1|Comunidad), family  = glmmTMB::beta_family())
+
+
 
 # Analysis beta
+data2 <- data[,c(1,2,7,8)]
 
-for1 <- "Uses ~ 1"
-for2 <- "Uses ~ Community"
-for3 <- "Uses ~ Composition"
-for4 <- "Uses ~ Composition+Community" 
-for5 <- "Uses ~ Composition*Community" 
+mod1<- glm(etno ~ 1, data=data2)
+mod2<- glm(etno ~ comp*Comunidad, data=data2)
+mod3<- glmmTMB(etno ~ (1 | Comunidad), family  = beta_family, data=data2)
+mod4<- glmmTMB(etno ~ comp + (1 | Comunidad), family  = beta_family, data=data2)
+mod5<- glmmTMB(etno ~ comp + (comp|Comunidad), family  = beta_family, data=data2)
+mod6<- glmmTMB(etno ~ comp + (comp + 0 | Comunidad ), family  = beta_family, data=data2)
+mod7<- glmmTMB(etno ~ comp + (comp || Comunidad), family  = beta_family, data=data2)
+mod8<- glmmTMB(etno ~ comp * Comunidad + (1 | Comunidad), family  = beta_family, data=data2)
 
-betareg1 <- betareg(etno~1,  link = "logit", data = df_beta)
-betareg2 <- betareg(etno~Comunidad, link = "logit", data = df_beta)
-betareg3 <- betareg(etno~comp,  link = "logit", data = df_beta)
-betareg4 <- betareg(etno~comp+Comunidad,  link = "logit", data = df_beta)
-betareg5 <- betareg(etno~comp*Comunidad,  link = "logit", data = df_beta)
 
-AIC(betareg1, betareg2, betareg3, betareg4, betareg5)
+
+Akaike <- AIC(mod1,mod2, mod3, mod4, mod6, mod7)
+
+Akaike
+subset(Akaike, Akaike$AIC< ((min(Akaike$AIC))+2))
+
+
+summary(mod6)
+r2(mod4)
+library(Rmisc)
+install.packages("Rmisc")
+CI(data2$etno, ci=0.95)
+
+#Plot predictions
+min <- min(data2$comp)
+max <- max(data2$comp)
+
+
+
+newdatpredation <-data.frame(comp=c(rep(seq(min, max, length.out = 100), each = 76)),
+                             Comunidad = NA)
+
+preds_45 <- predict(mod4, data2, se=T, re.form=NA)
+plot_data_m4 <- data.frame(newdatpredation,
+                           pred = preds_45$fit,
+                           low = preds_45$fit - 1.96*preds_45$se.fit, 
+                           upp = preds_45$fit + 1.96*preds_45$se.fit)
+
+plot_data_m4
+
+
+r2(mod7)
+
+
+
+
+
+
+
+
+
+
+MuMIn::r.squaredGLMM(mod4)
+performance::r2(mod5)
+summary(mod6)
+colnames(data2)
+pred <- ggpredict(mod7, terms=c("comp", "Comunidad"), type = "random")
+pred
+pred <- pred %>% dplyr::rename(Comunidad=group)
+
+
+total_beta <- ggplot(pred, aes(x = x, y = predicted, color = Comunidad)) +
+  geom_line(size = 1) +
+  geom_point(data=data2, aes(y=etno, x=comp, color=Comunidad),alpha=0.5)+
+ # geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2) +
+  #facet_wrap(~group)+
+  scale_color_manual(values = pal)+
+  scale_fill_manual(values = pal)+
+  theme(legend.position = "none") +
+  ggtitle('Beta diversity') + theme_classic() +  theme(legend.position = "none") 
+total_beta
+
+preds_45$fit - 1.96*preds_45$se.fit
+preds_4 <- predict(mod4, data2, se=T, re.form=NA)
+min <-preds_4$fit - 1.96*preds_4$se.fit
+
+individual_beta <- ggplot(data2, aes(x = comp, y = etno, color = Comunidad)) +
+  geom_point(size=2, alpha=.5)+
+ facet_wrap(~ Comunidad)+
+  geom_line(data = pred, aes(x = x, y = predicted), size = 1) +
+ # geom_ribbon(aes(ymax = predict(mod4, data2, se=T, re.form=NA)$se.fit,                ymin = predict(mod4, data2, se=T, re.form=NA)$se.fit))+
+  scale_color_manual(values = pal)+
+  scale_fill_manual(values = pal)+
+  theme(legend.position = "none") +
+  ggtitle('Per community') + theme_classic() +  theme(legend.position = "none") +
+  facet_wrap(~ Comunidad)
+individual_beta
+patch <- total_alpha/ind_alpha|total_beta / individual_beta 
+patch+plot_annotation(tag_levels = 'A')
+
+
+
+newdatpredation <-data.frame(logHpopkm=c(rep(seq(mini, maxi, length.out = 100), each = 76)),
+                             abslat =rep(c(seq(0, 75, length.out = 76)), 100),
+                             Site=NA,
+                             coordinates = NA)
+
+preds_45 <- predict(glmer_45, newdatpredation, se=T, re.form=NA)
+plot_data_m4 <- data.frame(newdatpredation,
+                           pred = preds_45$fit,
+                           low = preds_45$fit - 1.96*preds_45$se.fit, 
+                           upp = preds_45$fit + 1.96*preds_45$se.fit)
+
+
+
+
+
+
+
+
+
+
+
+
+newdatf <- data.frame(newdat, plo = exp(newdat$y-1.96*sqrt(pvarf)), phi = exp(newdat$y+1.96*sqrt(pvarf)))
 
 AICc <- round(AIC(betareg1, betareg2, betareg3, betareg4, betareg5), 2)
-Formulation <- c(for1, for2, for3, for4, for5)
-R2 <-round( c(summary(betareg1)$pseudo.r.squared, summary(betareg2)$pseudo.r.squared,summary(betareg3)$pseudo.r.squared, 
-              summary(betareg4)$pseudo.r.squared, summary(betareg5)$pseudo.r.squared),3)
-round(R2,1)
 
-table1 <- cbind(Formulation, AICc, R2)
-Table1 <- qflextable (table1)
-Table1
-#print(Table1,  preview="docx")
+nd_pop <- data.frame(Comunidad=data2$Comunidad, comp=data2$comp,etno=1:length(data2$comp))
+newdata <- data.frame(x1 = c(1, 2, 3), x2 = c(4, 5, 6), subject = rep(1, 3))
+preds <- predict(mod4, nd_pop,  type = "response", re.form = NA, se.fit=T)
 
-Table2 <- rownames_to_column (round(as.data.frame(coef(summary(betareg5)))[1:4], 3))
-colnames(Table2)  <- c("Term", "Estimate", "SE", "z value", "p-value")
-Table3 <- qflextable(Table2)
-Table3
-#print(Table3,  preview="docx")
 
-# Check residuals
-Res <- residuals(betareg5, "deviance")
-Fit <- fitted(betareg5)
-par(mfrow=c(2,2))
-plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
-abline(h=0)
-plot(Res ~ df_beta$comp, xlab="Rel_freq", ylab="Residuals", main = "Rel_freq")
-abline(h=0)
-hist(Res, main="Histogram of residuals", xlab="Residuals")
-qqnorm(Res)
-qqline(Res)
+str(preds)
+hist(preds$se.fit)
+observed <- data.frame(x1 = data2$comp, x2 = data2$Comunidad, y = data2$etno)
+predicted <- data.frame(x1 = data2$comp, x2 = data2$Comunidad, y = preds$fit)
+ci <- preds
+ci <- as.data.frame(cbind(ci$fit, ci$se.fit))
+View(ci)
+newdatf <- data.frame(ci, plo = exp(ci$V1-1.96*sqrt(V1)), phi = exp(newdat$V1+1.96*sqrt(V1)))
+
+View(ci)
+ci_2 <- exp(cbind(ci[, 1], ci[, 1] + qnorm(0.975) * ci[, 2], ci[, 1] - qnorm(0.975) * ci[, 2]))
+colnames(ci) <- c("fit", "lwr", "upr")
+
+# Add the confidence intervals to the new data frame
+newdata$ci_lwr <- ci[, 2]
+newdata$ci_upr <- ci[, 3]
+# Create a scatter plot with the observed data
+
+ggplot(observed, aes(x = x1, y = y, color=x2)) +
+  geom_point(alpha=0.8) +
+  geom_line(data=predicted, aes(x = x1, y = y, color=x2)) +
+  #facet_wrap(~ x2) +
+  theme_classic()+
+  scale_color_manual(values = pal)+ scale_fill_manual(values = pal)+
+  theme(legend.position = "none") +
+  ggtitle('Beta diversity')+  theme(legend.position = "none") 
+
+
+
+ggplot(observed, aes(x = x1, y = y, color=x2)) +
+  geom_point() +
+  facet_wrap(~ x2) +
+  geom_line(data=predicted, aes(x = x1, y = y, color=x2)) +
+  facet_wrap(~ x2) + theme_classic()+
+  scale_color_manual(values = pal)+
+  scale_fill_manual(values = pal)+
+  theme(legend.position = "none") +
+  ggtitle('Per community')+  theme(legend.position = "none") 
 
 
 # Plots 
 
-# Plot Alpha
 
-display.brewer.all(n=NULL, type="all", select=NULL, exact.n=TRUE, colorblindFriendly=T)
-pal <- brewer.pal(10, "Paired")
-pal <- c( "#1F78B4", "#B2DF8A", "#33A02C",  "#CB6856","#6A3D9A", "#FDBF6F", "#FF7F00", "#CAB2D6", "#A6CEE3")
-
-all_alpha <- df %>% 
-  ggplot(aes(x = Species, y = Uses, group = Community, color = Community, size=Uses)) +
-  geom_point (data=df, size=log(df$Uses)/1.3, alpha=.8)+
-  #geom_smooth(method = "glm")+
-  theme_classic()+
-  labs(x="Species richness", y ="Use diversity")+
-  scale_color_manual(values = pal)+
-  theme(legend.position = "none") +
-  ggtitle('Alpha diversity')
-
-all_alpha
-
-df$fit <- predict(glmer3, se.fit = TRUE)   #Add model fits to dataframe
-
-
-glm4 <- glm(Uses~Species+Community, data=df)
-predictions_mod2 = MuMIn::predict(glmer3, df, se.fit = TRUE, type = 'response')
-
-upper_mod2 = predictions_mod2$fit+1.96*predictions_mod2$se.fit 
-lower_mod2 = predictions_mod2$fit-1.96*predictions_mod2$se.fit
-#combining into a df
-predframe = data.frame(lwr=lower_mod2,upr=upper_mod2, Species = df$Species, Uses = df$Uses, Community=df$Community)
-head(predframe)
-head(df)
-#plot model with 95% confidence intervals using ggplot
-by_comm_alpha <- ggplot(df, aes(x = Species, y = Uses, group = Community, color=Community)) +
-  geom_ribbon(data = predframe, aes(ymin=lwr, ymax=upr), alpha = 0.09, color="white") +
-  geom_point(alpha = .8)+
-  geom_line(aes(y = predict(glm4, df)))+
-  theme_classic()+labs(x="Species richness", y ="Use diversity")+
-  scale_color_manual(values = pal)+
-  scale_fill_manual(values = pal)+
-  facet_wrap(~Community, nrow = 2)+
-  theme(legend.position="none")
-
-
-#all/alpha_com
 
 # Plot beta
 
+
 pal <- brewer.pal(10, "Paired")
 pal <- c( "#1F78B4", "#B2DF8A", "#33A02C",  "#CB6856","#6A3D9A", "#FDBF6F", "#FF7F00", "#CAB2D6", "#A6CEE3")
+
+
+data(sleepstudy,package="lme4")
+g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
+predict(g0, sleepstudy)
+## Predict new Subject
+nd <- sleepstudy[1,]
+nd$Subject <- "new"
+predict(g0, newdata=nd, allow.new.levels=TRUE)
+## population-level prediction
+nd_pop <- data.frame(Days=unique(sleepstudy$Days),
+                     Subject=NA)
+predict(g0, newdata=nd_pop)
+
+
+data2
+data2<-data %>% rename(group=Comunidad)
+mod4
+predict(mod4, data)
+
+nd <- data2[1,]
+nd$Subject <- "new"
+predict(mod4, newdata=nd, allow.new.levels=TRUE)
+## population-level prediction
+nd_pop <- data.frame(Plot=unique(data$Plot_comb),
+                     Comunidad=NA)
+predict(mod4, newdata=nd_pop)
+
+
+
+mydf <- ggpredict(mod4, terms=c("comp", "Comunidad"), type = "random", ci.lvl = 0.95)
+
+ggplot(mydf, aes(x = x, y = predicted, colour = group)) +
+  geom_line()+
+  geom_point(data=data2, aes(x=comp, y=etno, colour=group))+
+  #stat_smooth(method = "glm", se = T) + 
+  facet_wrap(vars(group))+
+  theme_classic()+labs(x="Floristic dissimilarity", y ="Use distance")+
+  scale_color_manual(values = pal)+  scale_fill_manual(values = pal)+
+  theme(legend.position="none")
+
+colnames(mydf)
+ggplot(mydf, aes(x = x, y = predicted, colour = group)) +
+  geom_line()+
+  geom_ribbon(aes(ymin =predict(mod4, type="quantile", at = c(0.25)), 
+                  ymax =conf.high, alpha=0.01))+
+  geom_point(data=data2, aes(x=comp, y=etno, colour=group))+
+  facet_wrap(vars(group))+
+  theme_classic()+labs(x="Floristic dissimilarity", y ="Use distance")+
+  scale_color_manual(values = pal)+  scale_fill_manual(values = pal)+
+  theme(legend.position="none")
+
+
+ggplot() +
+  geom_point(data=data, aes(x=comp, y=etno, colour=Comunidad))+facet_wrap(~Comunidad)
+
+mydf <- ggpredict(mod4, terms=c("comp"), type = "random")
+ggplot(mydf, aes(x = x, y = predicted))+
+  geom_point(data=data, aes(x=comp, y=etno))+
+  stat_smooth(method = "lm", se = T) +  
+  theme_classic()+labs(x="Floristic dissimilarity", y ="Use distance")
+
+
+
++
+  labs(x="Species richness", y ="Use diversity")+
+  scale_color_manual(values = pal)+
+  scale_fill_manual(values = pal)+
+  theme(legend.position = "none") +
+  ggtitle('Alpha diversity')+ theme_classic() +  theme(legend.position = "none") 
+
+
+
+
+
 total <- ggplot(df_beta, aes(x = comp, y = etno, color=Comunidad, size=etno)) +
   geom_point( alpha=.8) +
   scale_size(range = c(0, 2)) +
