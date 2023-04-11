@@ -344,6 +344,19 @@ dev.off()
 
 
 
+##############################
+##############################
+##############################
+##############################
+##############################
+##############################
+##############################
+##############################
+##############################
+##############################
+##############################
+##############################
+
 
 
 
@@ -483,7 +496,7 @@ distances$Plot_comb <- paste(distances$Plot1, distances$Plot2)
 ds$Plot_comb <- paste(ds$Plot1, ds$Plot2)
 data_p <- merge(ds, distances, by="Plot_comb")
 #plot(data_p$comp, data_p$etno)
-DONDE ESTA DATAAAAAA
+
 colnames(dt) <- c("Plot1", "Community")
 data_p1 <- merge(dt, distances,by="Plot1")
 data_p2 <- merge(dt, data_p1, by.y="Plot2", by.x="Plot1")
@@ -523,6 +536,11 @@ bargraph
 # la distancia florística es mayor no coincide con la distancia de conocimiento, excepto en el caso de guiyero y bolivar. 
   # la distancia florística es mayor que la distancia de conocimiento. 
 
+
+
+
+
+
  indices <- df$Community
 variables <- df$Plot
 dt <- data.table(indices, variables)
@@ -535,17 +553,17 @@ get_permutations <- function(df){
 ds <- dt[, get_permutations(.SD), by = variables]
 colnames(ds) <- c("Comunidad", "Plot1", "Plot2")
 
+distances$Plot_comb <- paste(distances$Plot1, distances$Plot2)
+data_toplot <- merge(ds, distances, by="Plot_comb")
 
 
 
-
-
-data<-distances
 # Analysis beta
-data2 <- data[,c(1,2,7,8)]
+data2 <- data_toplot[,c(1,2,7,8)]
+
+
 library(glmmTMB)
-mod1<- glm(etno ~ 1, data=data2)
-mod2<- glm(etno ~ comp*Comunidad, data=data2)
+
 mod3<- glmmTMB(etno ~ (1 | Comunidad), family  = beta_family, data=data2)
 mod4<- glmmTMB(etno ~ comp + (1 | Comunidad), family  = beta_family, data=data2)
 mod5<- glmmTMB(etno ~ comp + (comp|Comunidad), family  = beta_family, data=data2)
@@ -555,14 +573,31 @@ mod8<- glmmTMB(etno ~ comp * Comunidad + (1 | Comunidad), family  = beta_family,
 
 
 
-Akaike <- AIC(mod1,mod2, mod3, mod4, mod6, mod7)
+Akaike <- AIC(mod3, mod4, mod5, mod6, mod7)
 
 Akaike
 subset(Akaike, Akaike$AIC< ((min(Akaike$AIC))+2))
 
 
-summary(mod6)
-r2(mod4)
+
+# Check residuals
+par(mfcol=c(2,2))
+Res <- residuals(mod5, type="pearson")
+Fit <- fitted(mod5)
+par(mfrow=c(2,2))
+plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
+abline(h=0)
+plot(Res ~ data2$comp, xlab="NAP", ylab="Residuals", main = "NAP") > abline(h=0)
+hist(Res, main="Histogram of residuals", xlab="Residuals")
+qqnorm(Res)
+qqline(Res)
+
+
+
+
+summary(mod5)
+r2(mod5)
+library(performance)
 library(Rmisc)
 install.packages("Rmisc")
 CI(data2$etno, ci=0.95)
@@ -580,7 +615,8 @@ preds_45 <- predict(mod4, data2, se=T, re.form=NA)
 plot_data_m4 <- data.frame(newdatpredation,
                            pred = preds_45$fit,
                            low = preds_45$fit - 1.96*preds_45$se.fit, 
-                           upp = preds_45$fit + 1.96*preds_45$se.fit)
+                           upp = preds_45$fit + 1.96*preds_45$se.fit,
+                           Comunidad = data2)
 
 plot_data_m4
 
@@ -597,18 +633,42 @@ r2(mod7)
 
 
 MuMIn::r.squaredGLMM(mod4)
-performance::r2(mod5)
 summary(mod6)
 colnames(data2)
-pred <- ggpredict(mod7, terms=c("comp", "Comunidad"), type = "random")
+pred <- ggpredict(mod4, terms=c("comp", "Comunidad"), type = "random")
 pred
 pred <- pred %>% dplyr::rename(Comunidad=group)
 
+head(plot_data_m4)
 
-total_beta <- ggplot(pred, aes(x = x, y = predicted, color = Comunidad)) +
+x#Plot predictions
+min <- min(data2$comp)
+max <- max(data2$comp)
+
+
+seq(min, max, length.out = 760)
+newdat <-data.frame(comp=c(rep(seq(min, max), each = 76)))
+
+nd_pop <- data.frame(comp= seq(min, max, length.out = 760), Comunidad=data2$Comunidad, new=NA)
+
+nd$Subject <- "new"
+predict(g0, newdata=nd, allow.new.levels=TRUE)
+
+
+preds_45$se.fit
+preds_45 <- predict(mod5,se=T, re.form=NA)
+
+plot_data_m4 <- data.frame(nd_pop,
+                           pred = preds_45$fit,
+                           low = preds_45$fit - 1.96*preds_45$se.fit, 
+                           upp = preds_45$fit + 1.96*preds_45$se.fit,
+                           Comunidad = data2$Comunidad)
+
+plot_data_m4
+total_beta <- ggplot(plot_data_m4, aes(x = comp, y = pred, color=Comunidad)) +
   geom_line(size = 1) +
   geom_point(data=data2, aes(y=etno, x=comp, color=Comunidad),alpha=0.5)+
- # geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2) +
+ geom_ribbon(data=plot_data_m4, aes(ymin = low, ymax = upp), alpha = 0.2) +
   #facet_wrap(~group)+
   scale_color_manual(values = pal)+
   scale_fill_manual(values = pal)+
@@ -641,20 +701,12 @@ newdatpredation <-data.frame(logHpopkm=c(rep(seq(mini, maxi, length.out = 100), 
                              Site=NA,
                              coordinates = NA)
 
-preds_45 <- predict(glmer_45, newdatpredation, se=T, re.form=NA)
+preds_45 <- predict(mod4, newdatpredation, se=T, re.form=NA)
 plot_data_m4 <- data.frame(newdatpredation,
                            pred = preds_45$fit,
                            low = preds_45$fit - 1.96*preds_45$se.fit, 
-                           upp = preds_45$fit + 1.96*preds_45$se.fit)
-
-
-
-
-
-
-
-
-
+                           upp = preds_45$fit + 1.96*preds_45$se.fit,
+                           Comunidad = data2$Comunidad)
 
 
 
@@ -673,10 +725,7 @@ observed <- data.frame(x1 = data2$comp, x2 = data2$Comunidad, y = data2$etno)
 predicted <- data.frame(x1 = data2$comp, x2 = data2$Comunidad, y = preds$fit)
 ci <- preds
 ci <- as.data.frame(cbind(ci$fit, ci$se.fit))
-View(ci)
 newdatf <- data.frame(ci, plo = exp(ci$V1-1.96*sqrt(V1)), phi = exp(newdat$V1+1.96*sqrt(V1)))
-
-View(ci)
 ci_2 <- exp(cbind(ci[, 1], ci[, 1] + qnorm(0.975) * ci[, 2], ci[, 1] - qnorm(0.975) * ci[, 2]))
 colnames(ci) <- c("fit", "lwr", "upr")
 
@@ -700,6 +749,7 @@ ggplot(observed, aes(x = x1, y = y, color=x2)) +
   geom_point() +
   facet_wrap(~ x2) +
   geom_line(data=predicted, aes(x = x1, y = y, color=x2)) +
+  geom_ribbon(data = subset(plot_data_m4, plot_data_m4$abslat==plot_data_m4$abslat[1]) ,aes(ymin = expit(low), ymax = expit(upp)), fill = "grey5", alpha = 0.15, linetype = 0) +
   facet_wrap(~ x2) + theme_classic()+
   scale_color_manual(values = pal)+
   scale_fill_manual(values = pal)+
@@ -743,11 +793,11 @@ predict(mod4, newdata=nd_pop)
 
 
 
-mydf <- ggpredict(mod4, terms=c("comp", "Comunidad"), type = "random", ci.lvl = 0.95)
+mydf <- ggpredict(mod5, terms=c("comp", "Comunidad"), type = "random", ci.lvl = 0.95)
 
 ggplot(mydf, aes(x = x, y = predicted, colour = group)) +
   geom_line()+
-  geom_point(data=data2, aes(x=comp, y=etno, colour=group))+
+  geom_point(data=data2, aes(x=comp, y=etno, colour=Comunidad))+
   #stat_smooth(method = "glm", se = T) + 
   facet_wrap(vars(group))+
   theme_classic()+labs(x="Floristic dissimilarity", y ="Use distance")+
