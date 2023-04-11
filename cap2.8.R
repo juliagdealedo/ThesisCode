@@ -129,26 +129,7 @@ use_dist <- column_to_rownames(use_dist, "Plot")
 # Test with permanova
 use_dist <- reshape2::dcast(df_etno4, Plot~Use, value.var="Species", fill=0)
 use_dist <- column_to_rownames(use_dist, "Plot")
-
-adonis <- adonis(use_dist~Comunidad,  method="bray", resu)
-
-#adonis <- adonis(use_dist~ugg5$value+Comunidad,  method="bray", resu)
-anova1 <- as.data.frame(adonis$aov.tab)
-anova1 <- round(anova1, 3)
-anova1<- rownames_to_column(anova1)
-colnames(anova1) <- c("Parameter", "Df", "SS", "MS", "F", "R2", "p-value")
-anova2 <- flextable(anova1, col_keys = names(anova1))
-#print(anova2, preview="docx")
-afss <- adonis$aov.tab$SumsOfSqs
-variance <- (afss[1]/afss[3]*100)
-print(paste("variance =", round(variance,3)))
-anova2
-
 use_dist_bray <- vegdist(use_dist, method="bray")
-# ANOSIM
-etno.ano.use <- with(resu, anosim(use_dist_bray, Comunidad, distance="bray"))
-print(paste("R =", round(etno.ano.use$statistic, 3)))
-
 
 # NMDS
 compMDS.use <-metaMDS(use_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE) ##k is the number of dimensions
@@ -184,19 +165,62 @@ compMDS <-metaMDS(abs_comp_dist, distance="bray", k=2, trymax= 1000, autotransfo
 useMDS <- MDSrotate(useMDS, vec=resu$Latitud)
 compMDS <- MDSrotate(compMDS, vec=resu$Latitud)
 
+pdf("nmds_double.pdf", height=8,width=16, pointsize=12)
 
-plot(useMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2")
+par(mfcol=c(1,2))
+plot(compMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2", main="Knowledge")
+#plot(useMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2")
 legend("topleft", cex=0.8, pch=16, bg="black", col=unique(cols), legend=unique(resu$Comunidad), bty="n", inset = c(0, 0))
+points(useMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
 ordihull(useMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
-orditorp (useMDS, display="sites")
+#take <- as.numeric(rownames(forest.10))
+#orditorp(useMDS, "sp", select = take, cex=.6, col="black", air=0.1)
 #points(useMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
+plot(compMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2", main="Floristic")
 points(compMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
 ordihull(compMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
-orditorp (compMDS, display="sites", select=T)
+#orditorp (compMDS, display="sites", select=T)
+dev.off()
 
+# NMDS COORDINATES where species are going to be plotted
+axesfi <- axes
+axes <- envfit(useMDS, use_dist) 
+res <- scores(axes, "vectors") #vegan
+res <- as.data.frame(res)
+res <- rownames_to_column (res, var="Species")
+# Correlation into table. $vector are the CORRELATIONS of each species with the axes
+axes.table <- data.frame((axes$vectors)$arrows, (axes$vectors)$r, (axes$vectors)$pvals) # Convert result into table
+axes.table <- rownames_to_column(axes.table)
+colnames(axes.table) <- c("Species", "NMDS1", "NMDS2", "r", "p")
+cultural <- axes.table %>%filter(str_detect(Species, "CONSTRUCTION"))
+forest.10 <- subset(axes.table, Species %in% cultural$Species)
+
+
+# DOMINANCE filter to choose species
+abu <- arrange(as.data.frame(colSums(matrusp)),  desc(colSums(matrusp)))
+abu <- as.data.frame(colSums(matrusp))
+abu <- rownames_to_column(abu)
+colnames(abu) <- c("Species", "abundance")
+abu <- arrange(abu, desc(abundance))
+abu <- head(abu, 10)
+forest.10 <- subset(axes.table, Species %in% abu$Species)
+forest.10 <- (cbind(forest.10[,1], round(forest.10[c(2:5)],3))) 
+colnames(forest.10) <- c("Species", "NMDS1", "NMDS2", "r", "p")
+u <- qflextable(forest.10)
+TableSpeciestotalfi <- bold(u, i= ~ p < 0.05, bold=T, part="body") # Table 2b
+forest.10fi <- forest.10
+
+
+
+dev.off()
 scrs <- scores(useMDS, display = 'sites')
 scrs <- cbind(as.data.frame(scrs), Comunidad = resu$Comunidad)
 cent_etno <- aggregate(cbind(NMDS1, NMDS2) ~ Comunidad, data = scrs, FUN = mean)
+
+
+
+
+
 
 
 scrs <- scores(compMDS, display = 'sites')
@@ -208,6 +232,14 @@ ggplot(data=cent_etno, aes(x=NMDS1, y=NMDS2, col=Comunidad))+
   geom_point(data=cent_comp, aes(x=NMDS1, y=NMDS2, col=Comunidad), shape=17, size=5)+ theme_classic()
 
 plot(cent_comp$NMDS1, cent_comp$NMDS2)
+
+
+
+
+scrs_uses <- scores(useMDS, display = 'species')
+
+
+
 
 ## 1.2. How many species are destined to each category per community?
 
@@ -221,14 +253,6 @@ colnames(especie2) <- c("Plot", "Comunidad", "Species", "Category", "Subcategory
 especie2$Plot <- as.numeric (especie2$Plot)
 
 
-
-# df_sp <- unique(as.data.frame (cbind(etno$Comunidad, etno$Species, etno$Use, etno$Category)))
-# colnames(df_sp) <- c("Comunidad", "Species", "Use", "Category")
-# df_sp1 <- df_sp %>% drop_na(Category)
-# 
-# df_use <- unique(as.data.frame (cbind(etno$Comunidad, etno$Use, etno$Category)))
-# colnames(df_use) <- c("Comunidad", "Use", "Category")
-# df_use1 <- df_use %>% drop_na(Category)
 
 com_cord <- reshape2::dcast(especie2, Comunidad + Plot~Category, value.var="Species", fill=0)
 
@@ -351,7 +375,7 @@ glm_p4 <- glmer (for4, family=poisson(link = log), data = df)
 
 AICc <- round(AIC( glm_p1, glm_p2, glm_p3, glm_p4), 2)
 gof(glm_p3) # hay overdispersion
-
+library(lme4)
 # Negative binomial with negative cuadratic terms
 glmer1 <- glm (for1, data = df)
 glmer2 <- glmer.nb (for2, data = df)
@@ -377,6 +401,9 @@ Table3
 
 prds <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = "random", ci.lvl = 0.10) 
 
+pal <- brewer.pal(10, "Paired")
+pal <- c( "#1F78B4", "#B2DF8A", "#33A02C",  "#CB6856","#6A3D9A", "#FDBF6F", "#FF7F00", "#CAB2D6", "#A6CEE3")
+
 
 total_alpha <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = "random", ci.lvl = 0.10) %>% 
   plot(add.data=T, ci=F, limit.range = TRUE, colors="Community", alpha=0.2)+  labs(x="Species richness", y ="Use diversity")+
@@ -385,14 +412,15 @@ total_alpha <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = 
   theme_classic() +
   theme(legend.position = "none") +
   ggtitle('Alpha diversity')
-ind_alpha <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = "random", ci.lvl = 0.10) %>% 
-   plot(add.data=T, ci=T, limit.range = TRUE, colors="Community", alpha=0.2)+
+ind_alpha <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = "random") %>% 
+   plot(add.data=T, ci=F, limit.range = TRUE, colors="Community", alpha=0.2)+
    facet_wrap(~group)+   labs(x="Species richness", y ="Use diversity")+
    scale_color_manual(values = pal)+
    scale_fill_manual(values = pal)+
    theme(legend.position = "none") +
    ggtitle('Per community')+ theme_classic() +  theme(legend.position = "none") 
 library(patchwork)
+library(ggeffects)
 total_alpha/ind_alpha
 
 
@@ -416,16 +444,15 @@ colnames(ds) <- c("Comunidad", "Plot1", "Plot2")
 comp_dist <- reshape2::dcast(comp, Plot~Species, value.var="Species", fill=0)
 comp_dist <- column_to_rownames(comp_dist, var="Plot")
 abs_comp_dist <- as.matrix(comp_dist>0)*1
-View(abs_comp_dist)
 rowSums(abs_comp_dist)
-etno_matrix_dist <- vegdist(use_dist, method="jaccard")
-comp_matrix_dist <- vegdist(abs_comp_dist, method="jaccard")
-View(as.matrix(comp_matrix_dist))
+etno_matrix_dist <- vegdist(use_dist, method="bray")
+comp_matrix_dist <- vegdist(comp_dist, method="bray")
+comp_matrix_dist_pres <- vegdist(abs_comp_dist, method="jaccard")
+
 #betadiver(comp_matrix_dist)
 
 disetno <- etno_matrix_dist
 discomp <-comp_matrix_dist
-View(as.matrix(discomp))
 # Ethbobotany
 dist_etno <- as.matrix(disetno)
 dist_etno[upper.tri(dist_etno)] <- NA
@@ -449,21 +476,21 @@ dist_comp3 <- dist_comp2 %>%
 distances <- cbind(dist_etno3, dist_comp3)
 
 distances <- distances[,c(1,2,3,6)]
-plot(distances$comp, distances$etno)
+#plot(distances$comp, distances$etno)
 
 distances$Plot_comb <- paste(distances$Plot1, distances$Plot2)
 
 ds$Plot_comb <- paste(ds$Plot1, ds$Plot2)
 data_p <- merge(ds, distances, by="Plot_comb")
-plot(data_p$comp, data_p$etno)
-
-ds
-# get all the values TRY  NOT VALID!!
+#plot(data_p$comp, data_p$etno)
+DONDE ESTA DATAAAAAA
 colnames(dt) <- c("Plot1", "Community")
-data_p <- merge( distances, dt,by="Plot1")
-data_p <- merge( data_p, dt, by.x="Plot2", by.y="Plot1")
-data_p$group <- paste(data_p$Community.x, data_p$Community.y, sep="-")
-data_fin <- data_p[,c(8,3,4)]
+data_p1 <- merge(dt, distances,by="Plot1")
+data_p2 <- merge(dt, data_p1, by.y="Plot2", by.x="Plot1")
+data_p2$group <- paste(data_p2$Community.x, data_p2$Community.y, sep="-")
+unique(data_p2$group)
+data_p2$group <- str_replace(data_p2$group, "Tumupasa-Macahua", "Macahua-Tumupasa")
+data_fin <- data_p2[,c(8,5,6)]
 data_fin$resta <- data_fin$comp - data_fin$etno
 
 data_mean <- data_fin %>%  group_by(group) %>%
@@ -476,18 +503,25 @@ data_mean$etno_rescaled <- (data_mean$mean_etno - min(data_mean$mean_etno)) / (m
 
 
 data_melt <- reshape2::melt(data_mean[,c(1,4,5)]) 
-data_melt <- reshape2::melt(data_mean[,c(1,2,3)]) 
+#data_melt <- reshape2::melt(data_mean[,c(1,2,3)]) 
 
 bargraph <- ggplot(data = data_melt) +
   geom_bar(aes(x = value,
                y = reorder(group, -value),
-               fill = variable,
-               color = variable),
-           stat = "identity",
-           position="fill")+ theme_classic()
-  bargraph
+               fill = variable),
+           stat = "identity",  
+           position=position_dodge(width=0.7))+ 
+  scale_fill_manual(values=c('#99999990','#E69F00'), name="Distance", labels = c("Floristic", "Cultural"))+
+  theme_classic()+
+  labs(title="Floristic and cultural distance among communities", 
+       y="Community pairs", x = "Relative mean distance between plots")  
 
+bargraph
 
+#expected distance by floristic dissimilarity
+#true cultural distance 
+# la distancia florística es mayor no coincide con la distancia de conocimiento, excepto en el caso de guiyero y bolivar. 
+  # la distancia florística es mayor que la distancia de conocimiento. 
 
  indices <- df$Community
 variables <- df$Plot
@@ -504,13 +538,12 @@ colnames(ds) <- c("Comunidad", "Plot1", "Plot2")
 
 
 
-mod <- glmmTMB(data = data, formula = etno ~ comp + (1|Comunidad), family  = glmmTMB::beta_family())
 
 
-
+data<-distances
 # Analysis beta
 data2 <- data[,c(1,2,7,8)]
-
+library(glmmTMB)
 mod1<- glm(etno ~ 1, data=data2)
 mod2<- glm(etno ~ comp*Comunidad, data=data2)
 mod3<- glmmTMB(etno ~ (1 | Comunidad), family  = beta_family, data=data2)
@@ -680,9 +713,6 @@ ggplot(observed, aes(x = x1, y = y, color=x2)) +
 
 # Plot beta
 
-
-pal <- brewer.pal(10, "Paired")
-pal <- c( "#1F78B4", "#B2DF8A", "#33A02C",  "#CB6856","#6A3D9A", "#FDBF6F", "#FF7F00", "#CAB2D6", "#A6CEE3")
 
 
 data(sleepstudy,package="lme4")
