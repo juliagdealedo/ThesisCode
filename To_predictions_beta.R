@@ -1,8 +1,10 @@
 library(performance)
 library(glmmTMB)
 library(ggplot2)
+library(ggeffects)
+library(dplyr)
 
-save(pal, data2, file="dataluis.RData")
+#save(pal, data2, file="dataluis.RData")
 
 load(file = "dataluis.RData")
 
