@@ -375,8 +375,9 @@ plot_com <- na.omit(as.data.frame(unique(cbind(etno$Plot, etno$Comunidad))))
 colnames(plot_com) <- c("Plot", "Community")
 df <- merge(df, plot_com, by="Plot")
 # 
-
-
+library(patchwork)
+library(ggeffects)
+library(lme4)
 for1 <- "Uses_number ~ Species_number"
 for2 <- "Uses_number ~ (1|Community)"
 for3 <- "Uses_number ~ Species_number + (1|Community)"
@@ -388,7 +389,7 @@ glm_p4 <- glmer (for4, family=poisson(link = log), data = df)
 
 AICc <- round(AIC( glm_p1, glm_p2, glm_p3, glm_p4), 2)
 gof(glm_p3) # hay overdispersion
-library(lme4)
+
 # Negative binomial with negative cuadratic terms
 glmer1 <- glm (for1, data = df)
 glmer2 <- glmer.nb (for2, data = df)
@@ -432,8 +433,7 @@ ind_alpha <- ggpredict(glmer3, terms=c("Species_number", "Community"), type = "r
    scale_fill_manual(values = pal)+
    theme(legend.position = "none") +
    ggtitle('Per community')+ theme_classic() +  theme(legend.position = "none") 
-library(patchwork)
-library(ggeffects)
+
 total_alpha/ind_alpha
 
 
@@ -516,9 +516,14 @@ data_mean$etno_rescaled <- (data_mean$mean_etno - min(data_mean$mean_etno)) / (m
 
 
 data_melt <- reshape2::melt(data_mean[,c(1,4,5)]) 
-#data_melt <- reshape2::melt(data_mean[,c(1,2,3)]) 
+data_melt <- reshape2::melt(data_mean[,c(1,2,3)]) 
 
-bargraph <- ggplot(data = data_melt) +
+bargraph <- ggplot(data = > ggplot(trade.m, aes(Time)) + geom_bar(subset = .(variable ==
+     "EXP"), aes(y = value, fill = BEC), stat = "identity") +
+     geom_bar(subset = .(variable == "IMP"),
+         aes(y = -value, fill = BEC), stat = "identity") +
+     xlab("") + scale_y_continuous("Export  -  Import",
+     formatter = "comma")) +
   geom_bar(aes(x = value,
                y = reorder(group, -value),
                fill = variable),
@@ -528,6 +533,47 @@ bargraph <- ggplot(data = data_melt) +
   theme_classic()+
   labs(title="Floristic and cultural distance among communities", 
        y="Community pairs", x = "Relative mean distance between plots")  
+
+data_div <- data_melt %>% mutate (value= ifelse(variable=="mean_comp", value, -1*value))
+y_breaks <- pretty(data_melt$value)
+
+ggplot(data_div,
+       aes(x=value, 
+           y=reorder(group, -value),
+           fill=variable))+
+  geom_bar(stat='identity')+
+ # position=position_dodge(width=0.7))+ 
+  scale_fill_manual(values=c('#299617','#E69F00'), name="Distance", labels = c("Floristic", "Cultural"))+
+  theme_classic()+
+  labs(title="Floristic and cultural distance among communities", 
+       y="Community pairs", x = "Relative mean distance between plots")  +
+  scale_x_continuous(breaks=y_breaks,
+                     labels=abs(y_breaks))+
+  scale_y_discrete(labels=data_div$group)
+
+data_div <- data_mean %>% mutate (value= data_mean$comp_rescaled-data_mean$etno_rescaled)
+data_div <- data_div %>% mutate (value_fill= ifelse(value<0, "Cultural", "Floristic"))
+
+y_breaks <- pretty(data_div$value)
+
+
+ggplot(data_div,
+       aes(x=value, 
+           y=reorder(group, value),
+           fill=value_fill))+
+  geom_bar(stat='identity')+
+  # position=position_dodge(width=0.7))+ 
+  scale_fill_manual(values=c('#E69F00', '#299617'), name="Difference by:", labels = c("More cultural distance than floristic", "More floristic distance than cultural"))+
+  theme_classic()+
+  labs(title="Predominant floristic or cultural distance among communities", 
+       y="Community pairs", x = "Difference between cultural and floristic distance")  +
+  scale_x_continuous(breaks=y_breaks,
+                     labels=abs(y_breaks))+
+  geom_vline(xintercept = 0, linetype=2)
+
+ggsave("bargraph1.png")
+
+head(data_mean)
 
 bargraph
 
