@@ -5,7 +5,6 @@
 library(readxl) 
 library(reshape2)#dcast
 library(tibble)#column_to_row
-library(Imap)#geodistance
 library(vegan)#mantel
 library(recluster)#reclusterdist
 library(scales)#alpha
@@ -14,7 +13,6 @@ library(betapart)
 library(RColorBrewer)
 library(tidyverse)#ggplot,dplyr
 library(flextable) #create beautiful tables
-library(wesanderson)
 library(colorspace)
 library(viridis)
 library(vegan)
@@ -1257,14 +1255,11 @@ library(reshape2)
 library(tibble)
 library(scales)
 library(readxl)
-library(rgeos)
-library(cartography)
 library(sf)
 library(sp)
 library(rgdal)
 library(raster)
 library(geometry)
-library(mapmisc)
 library(RColorBrewer)
 library(ggplot2)
 library(dplyr)

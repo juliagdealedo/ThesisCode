@@ -25,7 +25,6 @@ library(corrplot)
 library(car)
 library(betareg)
 library(MuMIn)
-library(ComGenR)
 library(ggeffects)
 library(lme4)
 library(glmmTMB)
@@ -37,7 +36,6 @@ library(randomcoloR)
 library(RColorBrewer)
 library(colorspace)
 library(ggthemes)
-library(peRReo)
 library(ggpubr)
 library(showtext)
 library(viridis)
@@ -305,7 +303,7 @@ mat6
 rowSums(mat6)
 
 
-mat7 <- ComGenR::rel(mat6, rel.type = "sum")*100
+#mat7 <- ComGenR::rel(mat6, rel.type = "sum")*100
 mat8 <- as.data.frame(mat7)
 mat8
 colSums(mat7)
@@ -518,7 +516,7 @@ data_mean$etno_rescaled <- (data_mean$mean_etno - min(data_mean$mean_etno)) / (m
 data_melt <- reshape2::melt(data_mean[,c(1,4,5)]) 
 data_melt <- reshape2::melt(data_mean[,c(1,2,3)]) 
 
-bargraph <- ggplot(data = > ggplot(trade.m, aes(Time)) + geom_bar(subset = .(variable ==
+bargraph <- ggplot(data =  ggplot(trade.m, aes(Time)) + geom_bar(subset = .(variable ==
      "EXP"), aes(y = value, fill = BEC), stat = "identity") +
      geom_bar(subset = .(variable == "IMP"),
          aes(y = -value, fill = BEC), stat = "identity") +

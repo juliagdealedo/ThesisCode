@@ -1,25 +1,14 @@
 # NMDS try
 
-require(vegan)
-data(dune)
-set.seed(123)
-sol <- metaMDS(dune)
-sol2 <- metaMDS(dune, previous.best = sol)
-
-?metaMDS
-
-
-#Otra opción más sencilla sería poner como puntos de partida para el semilleo en el NMDS florístico 
-#las coordenadas de los puntos en el NMDS de distancias culturales. 
-#De esta manera ya estás estableciendo el punto de partida y cualquier alejamiento entre las distancias culturales y 
-#florísticas sería menos arbitraria y más justificada. 
-#Aunque honestamente nunca he hecho esto, creo que debería ser relativamente fácil. 
-#Creo que si metes el argumento 'previous.best=NMDS1' en la función 'metaMDS' cuando hagas el NMDS florístico 
-#(dónde NMDS1 sería el objeto metaMDS con las distancias culturales) debería funcionar sin problema. 
-#Con esto creo que sería suficiente. Mira a ver si los resultados te salen igual.
-
-
-
+install.packages("grateful")
+library(grateful)
+cite_packages(out.dir = ".")     
+cite_packages(out.format = "docx", out.dir = ".")
+pks <- scan_packages()
+get_pkgs_info()
+out.dir <- setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos")
+get_pkgs_info(pkgs = pks$pkg, out.dir = getwd())
+citation()
 # CAP2 - Understanding traditional knowledge distribution in western Amazonia #
 # JGA
 
@@ -47,7 +36,6 @@ library(corrplot)
 library(car)
 library(betareg)
 library(MuMIn)
-library(ComGenR)
 library(ggeffects)
 library(lme4)
 library(glmmTMB)
@@ -59,7 +47,6 @@ library(randomcoloR)
 library(RColorBrewer)
 library(colorspace)
 library(ggthemes)
-library(peRReo)
 library(ggpubr)
 library(showtext)
 library(viridis)
