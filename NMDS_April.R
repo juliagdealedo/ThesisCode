@@ -144,16 +144,6 @@ df_etno4$Plot <- as.numeric (df_etno4$Plot)
 use_dist <- reshape2::dcast(df_etno4, Plot~Use, value.var="Species", fill=0)
 use_dist <- column_to_rownames(use_dist, "Plot")
 
-
-
-
-# 1. Knowledge distribution over among communities #
-## 1.1. Does community have an effect in the difference in knowledge between plots?
-# Test with permanova
-use_dist <- reshape2::dcast(df_etno4, Plot~Use, value.var="Species", fill=0)
-use_dist <- column_to_rownames(use_dist, "Plot")
-use_dist_bray <- vegdist(use_dist, method="bray")
-
 # NMDS
 compMDS.use <-metaMDS(use_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE) ##k is the number of dimensions
 print(paste("stress =", round(compMDS.use$stress, 3)))
@@ -169,84 +159,50 @@ hoku <- met.brewer("Hokusai1", n=9)[1:9]
 grid.col = c( SanCarlos = "#FF7F00", Dicaro="#B2DF8A", Guiyero="#33A02C", Infierno = "#CB6856",Macahua = "#6A3D9A",
               NuevaVida = "#FDBF6F", Bolivar = "#1F78B4", Tumupasa = "#CAB2D6", Yamino = "#A6CEE3")
 cols <- grid.col[as.factor(resu$Comunidad)]
-
+unique(cols)
+[1] "#6A3D9A" "#CAB2D6" "#CB6856" "#1F78B4" "#A6CEE3" "#FF7F00" "#FDBF6F" "#B2DF8A" "#33A02C"
+labels <- c("Macahua", "Tumupasa", "Infierno", "Bolivar", "Yamino", "San Carlos", "Nueva Vida", "Dicaro", "Guiyero")
+unique(resu$Comunidad)
 # Plot NMDS
 # dev.off()
 # setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/figs/figs_2023")
 # svg("nmds_3.svg")
 #pdf("nmds_3.pdf", height=8,width=8, pointsize=12)
-
-set.seed(123)
-useMDS <-metaMDS(use_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE) ##k is the number of dimensions
-
-pointuse <- as.data.frame(useMDS$points)
-pointuse$MDS1
-
-compMDS <-metaMDS(abs_comp_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE) ##k is the number of dimensions
-
-compare <-metaMDS(abs_comp_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE, previous.best = useMDS) ##k is the number of dimensions
-
-useMDS <- MDSrotate(useMDS, vec=resu$Latitud)
-compMDS <- MDSrotate(compMDS, vec=resu$Latitud)
-compareMDS <- MDSrotate(compare, vec=resu$Latitud)
-
-
-par(mfcol=c(1,2))
-plot(useMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2", main="Knowledge")
-#plot(useMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2")
-legend("topleft", cex=0.8, pch=16, bg="black", col=unique(cols), legend=unique(resu$Comunidad), bty="n", inset = c(0, 0))
-points(useMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
-ordihull(useMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
-#take <- as.numeric(rownames(forest.10))
-#orditorp(useMDS, "sp", select = take, cex=.6, col="black", air=0.1)
-#points(useMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
-plot(compMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2", main="Floristic")
-points(compMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
-ordihull(compMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
-#orditorp (compMDS, display="sites", select=T)
-dev.off()
-
-plot(compareMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2", main="Floristic")
-points(compareMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
-ordihull(compareMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
-
-
-
-
-
-
-
-
-
-
 comp_dist <- reshape2::dcast(comp, Plot~Species, value.var="Species", fill=0)
 comp_dist <- column_to_rownames(comp_dist, var="Plot")
 abs_comp_dist <- as.matrix(comp_dist>0)*1
-centroids <- t(as.data.frame(summary(ordihull(useMDS, resu$Comunidad))))
-use_euc <- melt(as.matrix(dist(centroids[,1:2], method = "euclidean")))
 
-set.seed(123)
-useMDS <-metaMDS(use_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE) 
-plot(useMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1, main="Knowledge")
+set.seed(100)
+useMDS <-metaMDS(use_dist, distance="bray", k=2, trymax= 1000) ##k is the number of dimensions
+compMDS <-metaMDS(abs_comp_dist, distance="jaccard", k=2, trymax= 1000, previous.best = useMDS) ##k is the number of dimensions
+
+setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/figs/figs_2023")
+svg("nmds_3.svg", height=8,width=13, pointsize=15)
+#pdf("nmds_3.pdf", height=8,width=8, pointsize=12)
+par(mfcol=c(1,2))
+plot(useMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2", main="Knowledge")
+legend("topleft", cex=0.8, pch=16, bg="black", col=unique(cols), legend=labels, bty="n", inset = c(0, 0))
+points(useMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
 ordihull(useMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
+plot(compMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2", main="Floristic")
+points(compMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
+ordihull(compMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
+dev.off()
 
-set.seed(123)
-compareMDS <-metaMDS(abs_comp_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE, previous.best = useMDS)
-plot(compareMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1, main="Compare")
-ordihull(compareMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white")
 
-
-plot(centroids$NMDS1, centroids$NMDS2)
-plot(centroids$NMDS1, centroids$NMDS2)
 
 centro_use <- as.data.frame(t(summary(ordihull(useMDS, resu$Comunidad))))
-centro_comp <-as.data.frame(t(summary(ordihull(compare, resu$Comunidad))))
+centro_comp <-as.data.frame(t(summary(ordihull(compMDS, resu$Comunidad))))
 #comp_euc <- melt(dist(centroids[,1:2], method = "euclidean", diag = F))
-mat_comp <- as.matrix(dist(centro_comp[,1:2], method = "euclidean", diag = F))
-mat_use <- as.matrix(dist(centro_use[,1:2], method = "euclidean", diag = F))
+
+plot(centro_comp$NMDS1, centro_comp$NMDS2)
+points(centro_use$NMDS1, centro_use$NMDS2, pch=4)
+
+mat_comp <- as.matrix(dist(centro_comp[,1:2], method = "maximum", diag = F))
+mat_use <- as.matrix(dist(centro_use[,1:2], method = "maximum", diag = F))
 mat <- mat_comp-mat_use
 df <- data.frame(which(!is.na(mat), arr.ind = TRUE))
-df_2 <- melt(mat)[,1:2]
+df_2 <- reshape2::melt(mat)
 df_3 <- cbind(df, df_2)
 df_colours <- df_3[df_3$row <= df_3$col, ]
 df_4 <- df_3[df_3$row <= df_3$col, ]
@@ -261,141 +217,41 @@ df_4 <- df_4 %>% mutate (value_fill= ifelse(subtr<0, "Cultural", "Floristic"))
 # to_subs$subtr <- to_subs$comp - to_subs$use
 # to_subs$group <- paste(to_subs$Community1, to_subs$Community2, sep="-")
 
-ggplot(df_4, aes(x=subtr, y=reorder(group,subtr), fill=value_fill))+
+bar_predominance <- ggplot(df_4, aes(x=subtr, y=reorder(group,subtr), fill=value_fill))+
   geom_bar(stat='identity')+
   scale_fill_manual(values=c('#E69F00', '#299617'), name="Difference by:", labels = c("More cultural distance than floristic", "More floristic distance than cultural"))+
-  theme_classic()+
-  labs(title="Predominant floristic or cultural distance among communities", 
-       y="Community pairs", x = "Difference between cultural and floristic distance")
-ggsave ("predominant.svg")
+  #theme_classic()+
+  theme(axis.title.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+        panel.background = element_blank())+
+  labs(x = "Difference between cultural and floristic distance", title="Predominant floristic or cultural distance among communities")
 
+#bar_predominance 
 
-
-
-
-
-
-
-
-
-## locuras varias no consguido
-
-
-df <- data.frame(x = sample(c("A", "B", "C"), 20, replace = TRUE),
-                 y = sample(c("D", "E", "F"), 20, replace = TRUE))
-
-# plot using ggplot2
-df_4
 pal <- brewer.pal(10, "Paired")
 pal <- c( "#1F78B4", "#B2DF8A", "#33A02C",  "#CB6856","#6A3D9A", "#FDBF6F", "#FF7F00", "#CAB2D6", "#A6CEE3")
 
-df_colours$group <- paste(df_colours$Var1, df_colours$Var2, sep="-")
+grid.col = c( SanCarlos = "#FF7F00", Dicaro="#B2DF8A", Guiyero="#33A02C", Infierno = "#CB6856",Macahua = "#6A3D9A",
+              NuevaVida = "#FDBF6F", Bolivar = "#1F78B4", Tumupasa = "#CAB2D6", Yamino = "#A6CEE3")
 
 
-df_colours %>% 
-  ggplot(aes(x = row, fill=Var1)) +
-  geom_bar()
+legend_tile <- ggplot(data = df_4, aes(y=reorder(group,subtr)))+
+  geom_tile(size = 10, data=df_new, aes(y=reorder(group,subtr), x=Pair1, fill=Com1))+
+  geom_tile(size = 10, data=df_new, aes(y=reorder(group,subtr), x=Pair2, fill=Com2))+
+  scale_fill_manual(values = pal) + coord_equal()  + 
+  theme (axis.title.x=element_blank(),
+         axis.text.x=element_blank(),
+         axis.ticks.x=element_blank(),
+         panel.background = element_blank(),
+         legend.position = "none")+
+  labs(y="Community pairs", x = "")
 
-ggplot(df_colours, aes(fill=Var2, y=row, x=col)) + 
-  geom_bar(position="stack", stat="identity")
-
-
-
-ggplot(df_colours, aes(x=Var1,y=Var2, fill = Var1, col=Var1)) +
-  geom_tile(aes(x=Var1,y=Var2,fill = group, col=Var1), size = 0.5) +
- # scale_fill_manual(values = pal)+
- #  scale_color_manual(values = pal)+
-  theme_classic()
+legend_tile
 
 
-library(ggplot2)
-
-# Create a sample dataframe
-df <- data.frame(names = c("John", "Mary", "David", "Sarah"),
-                 other_names = c("Bob", "Jane", "Karen", "Tom"))
-
-# Define colors for each name
-name_colors <- c("John" = "red", "Mary" = "green", "David" = "blue", "Sarah" = "purple")
-
-# Plot the data using ggplot and geom_point
-ggplot(data = df, aes(x = names, y = other_names)) + 
-  geom_point(size = 10, aes(color = names), shape = 15) +
-  scale_color_manual(values = name_colors)
-
-
-
-
-ggsave("try.svg")
-library(ggplot2)
-
-# Create a sample dataframe
-df <- data.frame(names = c("John", "Mary", "David", "Sarah"),
-                 other_names = c("Bob", "Jane", "Karen", "Tom"))
-
-# Define colors for each name
-name_colors <- c("John" = "red", "Mary" = "green", "David" = "blue", "Sarah" = "purple")
-
-ggplot(data = df, aes(x = names, y = other_names)) + 
-  geom_point(size = 10, aes(color = names), shape = 15) +
-  scale_color_manual(values = name_colors)
-
-
-df <- data.frame(names = c("John", "Mary", "John", "Mary", "David", "Sarah"),
-                 other_names = c("1", "1", "2", "2","2", "2"))
-
-ggplot(data = df, aes(x = other_names, y = names)) + 
-  geom_point(size = 10, aes(color = names), shape = 15) +
-  scale_color_manual(values = name_colors)
-
-df_colours <- df_3[df_3$row <= df_3$col, ]
-df_colours$names <- paste(df_colours$Var1, df_colours$Var2, sep = "-")
-df_4
-ggplot(data = df_4, aes(y = group, x=1:2)) + 
-  geom_tile(data=df_4, size = 10, aes(x=1:2, y = group, color = Community1)) +
-  geom_tile(data=df_4, size = 10, aes( x=1:2, y = group, color = Community2)) +
-  scale_color_manual(values = pal)
-
-
-
-df_colours$row <- rep(1,length(df_colours$Var1))
-df_colours$col <- rep(2,length(df_colours$Var1))
-df_colours <- df_colours
-df_melt <- melt(df_colours,  value.name = "row")
-df_melt$variable <- as.character(df_melt$variable)
-str(df_melt)
-df_colours$row <- rep("pair1",length(df_colours$Var1))
-df_colours$col <- rep("pair2",length(df_colours$Var1))
-
-ordenation<-as.vector(arrange(df_4, -subtr)$group)
-# Plot the data using ggplot and geom_point
-ggplot(data = df_melt, aes(x = variable, y = reorder(names,ordenation))) + 
-  geom_tile(data=df_colours, size = 10, aes(x = row, y = names, color = Var1)) +
-  geom_tile(data=df_colours, size = 10, aes(x = col, y = names, color = Var2)) +
-  scale_color_manual(values = pal)
-
-library(ggplot2)
-
-# Create a sample dataframe
-df <- data.frame(name1 = c("John", "Mary", "David", "Sarah"),
-                 name2 = c("Bob", "Jane", "Karen", "Tom"))
-
-# Define colors for each name
-name_colors <- c("John" = "red", "Mary" = "green", "David" = "blue", "Sarah" = "purple",
-                 "Bob" = "orange", "Jane" = "pink", "Karen" = "gray", "Tom" = "brown")
-
-# Create a new column with the concatenated names
-df$names <- paste(df$name1, df$name2, sep = "-")
-
-# Plot the data using ggplot and geom_point
-ggplot(data = df, aes(x = 1, y = names)) + 
-  geom_point(size = 10, aes(color = name1, fill = name1), shape = 15) +
-  scale_color_manual(values = name_colors) +
-  scale_fill_manual(values = name_colors) +
-  theme_void() +
-  theme(legend.position = "none")
-
-
-
+legend_tile  + bar_predominance
+ggsave ("predominant.svg")
 
 
 
