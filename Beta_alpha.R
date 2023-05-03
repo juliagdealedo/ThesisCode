@@ -9,7 +9,6 @@ library(readxl)
 library(tidyverse)
 library(flextable) 
 library(reshape2)
-library(readxl)
 
 # Import data ####
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/data") 
@@ -47,32 +46,53 @@ df <- merge(df, plot_com, by="Plot")
 library(patchwork)
 library(ggeffects)
 library(lme4)
-for1 <- "Uses_number ~ Species_number"
-for2 <- "Uses_number ~ (1|Community)"
+for1 <- "Uses_number ~ (1|Community)"
+for2 <- "Uses_number ~ Species_number"
 for3 <- "Uses_number ~ Species_number + (1|Community)"
 for4 <- "Uses_number ~ Species_number + (Species_number|Community)"
-glm_p1 <- glm(for1, family=poisson(link = log), data = df)
-glm_p2 <- glmer (for2, family=poisson(link = log), data = df)
+glm_p1 <- glmer (for1, family=poisson(link = log), data = df)
+glm_p2 <- glm(for2, family=poisson(link = log), data = df)
 glm_p3 <- glmer (for3, family=poisson(link = log), data = df)
 glm_p4 <- glmer (for4, family=poisson(link = log), data = df)
 
 AICc <- round(AIC( glm_p1, glm_p2, glm_p3, glm_p4), 2)
+Formulation <- c(for1, for2, for3, for4)
+table1 <- cbind(Formulation, AICc)
+library(MuMIn)
+rglm1 <- round(r.squaredGLMM(glm_p1)[1,], 3) 
+rglm2 <- round(r.squaredGLMM(glm_p2)[1,], 3) 
+rglm3 <- round(r.squaredGLMM(glm_p3)[1,], 3) 
+rglm4 <- round(r.squaredGLMM(glm_p4)[1,], 3) 
+rsquared <- rbind(rglm1, rglm2, rglm3, rglm4)
+table1 <- cbind(Formulation, AICc, rsquared)
+Table1 <- qflextable (table1)
+print(Table1, preview="docx")
+
 gof(glm_p3) # hay overdispersion
 
+
 # Negative binomial with negative cuadratic terms
-glmer1 <- glm (for1, data = df)
-glmer2 <- glmer.nb (for2, data = df)
-glmer3 <- glmer.nb (for3, data = df) ### funciona y es mi preferido 4/4/23!!!!
+for1 <- "Uses_number ~ (1|Community)"
+for2 <- "Uses_number ~ Species_number"
+for3 <- "Uses_number ~ Species_number + (1|Community)"
+for4 <- "Uses_number ~ Species_number + (Species_number|Community)"
+glmer1 <- glmer.nb (for1, data = df)
+glmer2 <- glm (for2, data = df)
+glmer3 <- glmer.nb (for3, data = df) 
 glmer4 <- glmer.nb (for4, data = df)
 
-AICc <- round(AIC(glmer1, glmer2, glmer3, glmer4), 2)
-gof(glmer3) # no oversidpersion
-
-# Table 1 - present on the manuscript
+AICc <- round(AIC( glmer1, glmer2, glmer3, glmer4), 2)
+Formulation <- c(for1, for2, for3, for4)
 table1 <- cbind(Formulation, AICc)
-Table1 <- qflextable (glmer3)
-Table1
-#print(Table1,  preview="docx")
+library(MuMIn)
+rglm1 <- round(r.squaredGLMM(glmer1)[1,], 3) 
+rglm2 <- round(r.squaredGLMM(glmer2)[1,], 3) 
+rglm3 <- round(r.squaredGLMM(glmer3)[1,], 3) 
+rglm4 <- round(r.squaredGLMM(glmer4)[1,], 3) 
+rsquared <- rbind(rglm1, rglm2, rglm3, rglm4)
+table1 <- cbind(Formulation, AICc, rsquared)
+Table1 <- qflextable (table1)
+print(Table1, preview="docx")
 
 
 Table2 <- rownames_to_column (as.data.frame(round(coef(summary(glmer3)),4)))
@@ -137,25 +157,38 @@ total_alpha/ind_alpha
 
 ggsave("Alpha_april.pdf")
 
-
+??glmmTMB
 # BETA
 
 
-setwd("/home/luis/Investigacion/Articulos cientificos/En preparacion/2023 - Capt 2 Julia/R2")
+setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/github/cap2") 
+dir()
 load(file = "dataluis.RData")
+for1<-"Knowledge dissimilarity ~ (1 | Community)"
+for2 <-"Knowledge dissimilarity ~ Floristic dissimilarity + (1 | Community)"
+for3 <-"Knowledge dissimilarity ~ Floristic dissimilarity + (Floristic dissimilarity | Community)"
+for4 <-"Knowledge dissimilarity ~ Floristic dissimilarity + (Floristic dissimilarity + 0 | Community)"
+for5 <-"Knowledge dissimilarity ~ Floristic dissimilarity + (Floristic dissimilarity || Community)"
 
-mod3<- glmmTMB(etno ~ (1 | Comunidad), family  = beta_family, data=data2)
-mod4<- glmmTMB(etno ~ comp + (1 | Comunidad), family  = beta_family, data=data2)
-mod5<- glmmTMB(etno ~ comp + (comp|Comunidad), family  = beta_family, data=data2)
-mod6<- glmmTMB(etno ~ comp + (comp + 0 | Comunidad ), family  = beta_family, data=data2)
-mod7<- glmmTMB(etno ~ comp + (comp || Comunidad), family  = beta_family, data=data2)
-mod8<- glmmTMB(etno ~ comp * Comunidad + (1 | Comunidad), family  = beta_family, data=data2)
 
-Akaike <- AIC(mod3, mod4, mod5, mod6, mod7)
+mod1<- glmmTMB(etno ~ (1 | Comunidad), family  = beta_family, data=data2)
+mod2<- glmmTMB(etno ~ comp + (1 | Comunidad), family  = beta_family, data=data2)
+mod3<- glmmTMB(etno ~ comp + (comp|Comunidad), family  = beta_family, data=data2)
+#mod4<- glmmTMB(etno ~ comp + (comp + 0 | Comunidad ), family  = beta_family, data=data2)
+#mod5<- glmmTMB(etno ~ comp + (comp || Comunidad), family  = beta_family, data=data2)
+#mod6<- glmmTMB(etno ~ comp * Comunidad + (1 | Comunidad), family  = beta_family, data=data2)
+
+Akaike <- AIC(mod1, mod2, mod3)
 Akaike
-
+Formulation <- c(for1, for2, for3)
 subset(Akaike, Akaike$AIC< ((min(Akaike$AIC))+2))
-
+rmod1 <- as.data.frame(r2(mod1))[1:2]
+rmod2 <- as.data.frame(r2(mod2))[1:2]
+rmod3 <- as.data.frame(r2(mod3))[1:2]
+Table2 <- cbind(Formulation, round(Akaike, 2), round(rbind(rmod1, rmod2, rmod3), 3))
+Table2 <- qflextable(Table2)
+print(Table2, preview = "docx")
+??r2
 # Check residuals
 par(mfcol=c(2,2))
 Res <- residuals(mod5, type="pearson")

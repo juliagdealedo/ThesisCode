@@ -51,6 +51,7 @@ etno_original <- read_excel("etno-dis-mad-yas3.xlsx", sheet=1, col_names =T)
 etno <- etno_original %>% filter(!Comunidad=="Aguapolo")
 aguapolo <- etno_original %>% filter(Comunidad=="Aguapolo")
 etno <- etno_original %>% filter(!Comunidad=="Aguapolo")
+etno_to_slice <- etno
 aguapolo <- etno_original %>% filter(Comunidad=="Aguapolo")
 str(aguapolo)
 length(unique(etno$Species))
@@ -65,7 +66,7 @@ aguapolo_spp <- setdiff(aguapolo$Species, etno$Species)
 
 # Re categorization
 
-
+etno<-etno_to_slice 
 etno$Newcategory <- etno$Category
 etno$Newcategory <- gsub("MEDICINAL AND VETERINARY", "MEDICINAL", etno$Newcategory)
 etno$Newcategory<-gsub("CULTURAL USES", "CULTURAL", etno$Newcategory) #
@@ -73,12 +74,14 @@ etno$Newcategory<-gsub("CONSTRUCTION USES", "CONSTRUCTION", etno$Newcategory) #
 etno$Newcategory<-gsub("FIREWOOD", "FUEL", etno$Newcategory) #
 etno$Newcategory<-gsub("UTENSILS & TOOLS", "UTENSILS", etno$Newcategory) #
 etno$Newcategory<-gsub("HUMAN FOOD", "FOOD", etno$Newcategory) #
-etno$Newcategory<-gsub("ENVIRONMENTAL", "CULTURAL", etno$Newcategory) 
-etno$Newcategory<-gsub("TOXIC", "CULTURAL", etno$Newcategory) 
+etno$Newcategory<-gsub("TOXIC", "CULTURAL", etno$Newcategory)
+
 etno <- etno[!etno$Newcategory=="ANIMAL FOOD",]
 etno <- etno[!etno$Newcategory=="OTHER",]
 etno <- etno[!etno$Newcategory=="MARKETED",]
 etno <- etno[!etno$Newcategory=="WILD ANIMAL",]
+etno <- etno[!etno$Newcategory=="ENVIRONMENTAL",]
+
 names(etno)[names(etno) == 'Newcategory'] <- 'Category2'
 
 etno$Use <- gsub("MEDICINAL AND VETERINARY", "MEDICINAL", etno$Use)
@@ -87,18 +90,68 @@ etno$Use<-gsub("CONSTRUCTION USES", "CONSTRUCTION", etno$Use) #
 etno$Use<-gsub("FIREWOOD", "FUEL", etno$Use) #
 etno$Use<-gsub("UTENSILS & TOOLS", "UTENSILS", etno$Use) #
 etno$Use<-gsub("HUMAN FOOD", "FOOD", etno$Use) #
-etno$Use<-gsub("ENVIRONMENTAL", "CULTURAL", etno$Use) 
 etno$Use<-gsub("TOXIC", "CULTURAL", etno$Use) 
 etno <- etno[!etno$Use=="ANIMAL FOOD",]
 etno <- etno[!etno$Use=="OTHER",]
 etno <- etno[!etno$Use=="MARKETED",]
 etno <- etno[!etno$Use=="WILD ANIMAL",]
+etno <- etno[!etno$Use=="ENVIRONMENTAL",]
 
 
 
+# KEYSTONES
+
+df_etno <- etno %>% drop_na(Plot)
+
+unique(df_etno$Use)
+
+
+especie2 <- unique(as.data.frame (cbind(df_etno$Comunidad, df_etno$`Nombres comunes` ,df_etno$`Uso textual según cuaderno de campo`, df_etno$Family, df_etno$Species, df_etno$Category2, df_etno$Subcategory, df_etno$Use)))
+colnames(especie2) <- c("Comunidad", "Vernacular", "Text", "Family","Species", "Category", "Subcategory", "Use")
+
+keystones <- especie2 %>% drop_na(Species) %>% group_by(Comunidad, Species,Family) %>% 
+  filter (Category=="CULTURAL") %>% 
+  summarise(Use_number=n_distinct(Use))
+
+unique(keystones$Species)
+length(unique(keystones$Species))
+
+length(unique(keystones$Species[duplicated(keystones$Species)]))
+78/378
+
+
+keystones_vern <- especie2 %>% drop_na(Species) %>% group_by(Comunidad, Species,Family, Vernacular) %>% 
+  filter (Category=="CULTURAL") %>% 
+  summarise(Use_number=n_distinct(Use))
+
+keystones_vern_text %>% slice_sample()
+
+keystones_vern_text <- especie2 %>% drop_na(Species) %>% group_by(Comunidad, Species,Family, Vernacular, Text) %>% 
+  filter (Category=="CULTURAL") %>% 
+  summarise(Use_number=n_distinct(Use))
+
+as.data.frame(keystones_vern_text %>% filter (Comunidad=="Yamino")) %>% sample_n(3)
+as.data.frame(keystones_vern_text %>% filter (Comunidad=="Bolivar")) %>% sample_n(3)
+
+
+#keystones_selection <- keystones %>%group_by(Comunidad) %>% slice(which.max(Use_number))
+
+keystones_selection <- keystones %>% 
+  arrange(desc(Use_number)) %>% 
+  group_by(Comunidad) %>%
+  slice(1:3)
+table <- qflextable(keystones_selection)
+
+#print(table, preview="docx")
+
+
+keystones <- especie2 %>% drop_na(Species) %>% group_by(Comunidad, Species,Family,Vernacular ) %>% 
+  filter (Category=="CULTURAL") %>% 
+  summarise(Use_number=n_distinct(Use))
 
 
 
+duplicated(keystones_selection$Species)
 
 
 df_etno <- as.data.frame(unique(cbind(etno$informant, etno$Species, etno$Use)))
@@ -125,12 +178,6 @@ use_dist <- column_to_rownames(use_dist, "Plot")
 
 
 # Chordiagram 
-df_etno <- etno %>% drop_na(Plot)
-
-especie2 <- unique(as.data.frame (cbind(df_etno$Comunidad, df_etno$Species, df_etno$Category2, df_etno$Subcategory, df_etno$Use)))
-colnames(especie2) <- c("Comunidad", "Species", "Category", "Subcategory", "Use")
-keystones <- especie2 %>% group_by(Comunidad, Species ) %>% filter (Category=="CULTURAL") %>% summarise(Use_number=n_distinct(Use))
-keystones %>% filter(max(Use_number))
 
 
 # df_sp <- unique(as.data.frame (cbind(etno$Comunidad, etno$Species, etno$Use, etno$Category)))
@@ -140,6 +187,10 @@ keystones %>% filter(max(Use_number))
 # df_use <- unique(as.data.frame (cbind(etno$Comunidad, etno$Use, etno$Category)))
 # colnames(df_use) <- c("Comunidad", "Use", "Category")
 # df_use1 <- df_use %>% drop_na(Category)
+
+especie2 <- unique(as.data.frame (cbind(df_etno$Comunidad, df_etno$Species, df_etno$Category2, df_etno$Subcategory, df_etno$Use)))
+colnames(especie2) <- c("Comunidad", "Species", "Category", "Subcategory", "Use")
+
 
 com_cord <- reshape2::dcast(especie2, Comunidad~Category, value.var="Species", fill=0)
 com_cord <- column_to_rownames(com_cord,var="Comunidad")
@@ -186,7 +237,7 @@ table_op <- as_tibble(cbind(colnames(mat6), meann, desvest))
 colnames(table_op) <- c("Category", "Mean", "Standard Deviation")
 print(table_op)
 qflextable(table_op)
-sum(table_op$Mean)
+ sum(table_op$Mean)
 # Plot
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/figs/figs_2023")
 svg("chord_5.svg", height=8,width=8, pointsize=18)
