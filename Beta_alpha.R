@@ -28,6 +28,46 @@ comp <- comp_original %>% filter(!Cod_plot %in% plots_aguapolo)
 length(unique(comp$Species))
 aguapolo_spp <- setdiff(aguapolo$Species, etno$Species)
 
+
+# Re categorization
+
+
+etno$Newcategory <- etno$Category
+etno$Newcategory <- gsub("MEDICINAL AND VETERINARY", "MEDICINAL", etno$Newcategory)
+etno$Newcategory<-gsub("CULTURAL USES", "CULTURAL", etno$Newcategory) #
+etno$Newcategory<-gsub("CONSTRUCTION USES", "CONSTRUCTION", etno$Newcategory) #
+etno$Newcategory<-gsub("FIREWOOD", "FUEL", etno$Newcategory) #
+etno$Newcategory<-gsub("UTENSILS & TOOLS", "UTENSILS", etno$Newcategory) #
+etno$Newcategory<-gsub("HUMAN FOOD", "FOOD", etno$Newcategory) #
+#etno$Newcategory<-gsub("ENVIRONMENTAL", "CULTURAL", etno$Newcategory) 
+etno$Newcategory<-gsub("TOXIC", "CULTURAL", etno$Newcategory) 
+etno <- etno[!etno$Newcategory=="ANIMAL FOOD",]
+etno <- etno[!etno$Newcategory=="OTHER",]
+etno <- etno[!etno$Newcategory=="MARKETED",]
+etno <- etno[!etno$Newcategory=="WILD ANIMAL",]
+names(etno)[names(etno) == 'Newcategory'] <- 'Category2'
+
+etno$Use <- gsub("MEDICINAL AND VETERINARY", "MEDICINAL", etno$Use)
+etno$Use<-gsub("CULTURAL USES", "CULTURAL", etno$Use) #
+etno$Use<-gsub("CONSTRUCTION USES", "CONSTRUCTION", etno$Use) #
+etno$Use<-gsub("FIREWOOD", "FUEL", etno$Use) #
+etno$Use<-gsub("UTENSILS & TOOLS", "UTENSILS", etno$Use) #
+etno$Use<-gsub("HUMAN FOOD", "FOOD", etno$Use) #
+#etno$Use<-gsub("ENVIRONMENTAL", "CULTURAL", etno$Use) 
+etno$Use<-gsub("TOXIC", "CULTURAL", etno$Use) 
+etno <- etno[!etno$Use=="ANIMAL FOOD",]
+etno <- etno[!etno$Use=="OTHER",]
+etno <- etno[!etno$Use=="MARKETED",]
+etno <- etno[!etno$Use=="WILD ANIMAL",]
+
+
+
+
+
+
+
+
+
 # 2. Does knowledge depend on alpha and beta diversity?
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/data") 
 plots_aguapolo
@@ -57,16 +97,6 @@ glm_p4 <- glmer (for4, family=poisson(link = log), data = df)
 
 AICc <- round(AIC( glm_p1, glm_p2, glm_p3, glm_p4), 2)
 Formulation <- c(for1, for2, for3, for4)
-table1 <- cbind(Formulation, AICc)
-library(MuMIn)
-rglm1 <- round(r.squaredGLMM(glm_p1)[1,], 3) 
-rglm2 <- round(r.squaredGLMM(glm_p2)[1,], 3) 
-rglm3 <- round(r.squaredGLMM(glm_p3)[1,], 3) 
-rglm4 <- round(r.squaredGLMM(glm_p4)[1,], 3) 
-rsquared <- rbind(rglm1, rglm2, rglm3, rglm4)
-table1 <- cbind(Formulation, AICc, rsquared)
-Table1 <- qflextable (table1)
-print(Table1, preview="docx")
 
 gof(glm_p3) # hay overdispersion
 
@@ -157,13 +187,77 @@ total_alpha/ind_alpha
 
 ggsave("Alpha_april.pdf")
 
-??glmmTMB
+
+
+
+
+
 # BETA
 
+# 
+# setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/github/cap2") 
+# dir()
+#load(file = "dataluis.RData")
 
-setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/github/cap2") 
-dir()
-load(file = "dataluis.RData")
+
+indices <- df$Plot
+variables <- df$Community
+dt <- data.table(indices, variables)
+
+get_permutations <- function(df){
+  perm <- permutations(nrow(unique(df[,1])), 2, df$indices)
+  as.data.table(perm)
+}
+
+ds <- dt[, get_permutations(.SD), by = variables]
+colnames(ds) <- c("Comunidad", "Plot1", "Plot2")
+
+
+
+comp_dist <- reshape2::dcast(comp, Plot~Species, value.var="Species", fill=0)
+comp_dist <- column_to_rownames(comp_dist, var="Plot")
+abs_comp_dist <- as.matrix(comp_dist>0)*1
+rowSums(abs_comp_dist)
+etno_matrix_dist <- vegdist(use_dist, method="bray")
+comp_matrix_dist <- vegdist(comp_dist, method="bray")
+comp_matrix_dist_pres <- vegdist(abs_comp_dist, method="jaccard")
+
+#betadiver(comp_matrix_dist)
+
+disetno <- etno_matrix_dist
+discomp <-comp_matrix_dist_pres
+# Ethbobotany
+dist_etno <- as.matrix(disetno)
+dist_etno[upper.tri(dist_etno)] <- NA
+dist_etno2 <- reshape2::melt(dist_etno, na.rm = TRUE)
+dist_etno3 <- dist_etno2 %>%
+  dplyr::filter(!(value == 0)) %>%
+  dplyr::rename(Plot1 = Var1, 
+                Plot2 = Var2, 
+                etno = value)
+
+# Floristic
+dist_comp <- as.matrix(discomp)
+dist_comp[upper.tri(dist_comp)] <- NA
+dist_comp2 <- reshape2::melt(dist_comp, na.rm = TRUE)
+dist_comp3 <- dist_comp2 %>%
+  dplyr::filter(!(value == 0)) %>%
+  dplyr::rename(Plot1 = Var1, 
+                Plot2 = Var2, 
+                comp = value)
+
+distances <- cbind(dist_etno3, dist_comp3)
+
+distances <- distances[,c(1,2,3,6)]
+#plot(distances$comp, distances$etno)
+
+distances$Plot_comb <- paste(distances$Plot1, distances$Plot2)
+
+ds$Plot_comb <- paste(ds$Plot1, ds$Plot2)
+data_p <- merge(ds, distances, by="Plot_comb")
+#plot(data_p$comp, data_p$etno)
+data2 <- data_p[,c(2,7,8)]
+
 for1<-"Knowledge dissimilarity ~ (1 | Community)"
 for2 <-"Knowledge dissimilarity ~ Floristic dissimilarity + (1 | Community)"
 for3 <-"Knowledge dissimilarity ~ Floristic dissimilarity + (Floristic dissimilarity | Community)"
@@ -191,8 +285,8 @@ print(Table2, preview = "docx")
 ??r2
 # Check residuals
 par(mfcol=c(2,2))
-Res <- residuals(mod5, type="pearson")
-Fit <- fitted(mod5)
+Res <- residuals(mod3, type="pearson")
+Fit <- fitted(mod3)
 par(mfrow=c(2,2))
 plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
 abline(h=0)
@@ -201,8 +295,8 @@ hist(Res, main="Histogram of residuals", xlab="Residuals")
 qqnorm(Res)
 qqline(Res)
 
-summary(mod5)
-r2(mod5)
+summary(mod3)
+r2(mod3)
 
 #Plot predictions with PREDICT
 
@@ -212,7 +306,7 @@ data.sim <- data.frame(comp=rep(x, length(comunidad)),
                        Comunidad=rep(comunidad, each=length(x)))
 
 # for all data:
-preds <- predict(mod5, data.sim, se=T, re.form=NA)
+preds <- predict(mod3, data.sim, se=T, re.form=NA)
 plot_data <- data.frame(data.sim,
                            pred = exp(preds$fit)/(1+exp(preds$fit)),
                            low = exp(preds$fit - 1.96*preds$se.fit)/(1+exp(preds$fit - 1.96*preds$se.fit)), 
@@ -223,7 +317,7 @@ head(plot_data)
 
 # per each community 
 
-preds_ind <- predict(mod5, data.sim, se=T, re.form=NULL)
+preds_ind <- predict(mod3, data.sim, se=T, re.form=NULL)
 plot_data_ind <- data.frame(data.sim,
                         pred = exp(preds_ind$fit)/(1+exp(preds_ind$fit)),
                         low = exp(preds_ind$fit - 1.96*preds_ind$se.fit)/(1+exp(preds_ind$fit - 1.96*preds_ind$se.fit)), 
@@ -239,7 +333,7 @@ all_beta <- ggplot(data2) +
   geom_ribbon(data=plot_data, aes(x=comp, ymin = low, ymax = upp), alpha = 0.1) +
   theme_classic()+labs(x="Floristic dissimilarity", y ="Knowledge dissimilarity")+
   scale_color_manual(values = pal) + scale_fill_manual(values = pal)+
-  scale_x_continuous(limits = c(0.37, 1)) +
+  scale_x_continuous(limits = c(0.57, 1)) +
   theme(legend.position="none")+
   ggtitle('Beta diversity')
 
@@ -251,7 +345,7 @@ individual_beta <- ggplot(data2) +
   geom_ribbon(data=plot_data_ind, aes(x=comp, ymin = low, ymax = upp), alpha = 0.1) +
   theme_classic()+labs(x="Floristic dissimilarity", y ="Knowledge dissimilarity")+
   scale_color_manual(values = pal) + scale_fill_manual(values = pal)+
-  scale_x_continuous(limits = c(0.37, 1)) +
+  scale_x_continuous(limits = c(0.57, 1)) +
   theme(legend.position="none")+
   ggtitle('Per community')
 
@@ -265,7 +359,7 @@ ggsave("Beta_april.pdf")
 patch <- total_alpha/ind_alpha | all_beta/individual_beta
 patch+plot_annotation(tag_levels = 'A')
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/github/cap2/output/figures")
-ggsave("com_com_4.pdf",height = 17, width = 17,  scale=.5)
+ggsave("Figure1_cap2.pdf",height = 17, width = 17,  scale=.5)
 
 
 

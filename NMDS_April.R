@@ -84,7 +84,7 @@ etno$Newcategory<-gsub("CONSTRUCTION USES", "CONSTRUCTION", etno$Newcategory) #
 etno$Newcategory<-gsub("FIREWOOD", "FUEL", etno$Newcategory) #
 etno$Newcategory<-gsub("UTENSILS & TOOLS", "UTENSILS", etno$Newcategory) #
 etno$Newcategory<-gsub("HUMAN FOOD", "FOOD", etno$Newcategory) #
-etno$Newcategory<-gsub("ENVIRONMENTAL", "CULTURAL", etno$Newcategory) 
+#etno$Newcategory<-gsub("ENVIRONMENTAL", "CULTURAL", etno$Newcategory) 
 etno$Newcategory<-gsub("TOXIC", "CULTURAL", etno$Newcategory) 
 etno <- etno[!etno$Newcategory=="ANIMAL FOOD",]
 etno <- etno[!etno$Newcategory=="OTHER",]
@@ -98,7 +98,7 @@ etno$Use<-gsub("CONSTRUCTION USES", "CONSTRUCTION", etno$Use) #
 etno$Use<-gsub("FIREWOOD", "FUEL", etno$Use) #
 etno$Use<-gsub("UTENSILS & TOOLS", "UTENSILS", etno$Use) #
 etno$Use<-gsub("HUMAN FOOD", "FOOD", etno$Use) #
-etno$Use<-gsub("ENVIRONMENTAL", "CULTURAL", etno$Use) 
+#etno$Use<-gsub("ENVIRONMENTAL", "CULTURAL", etno$Use) 
 etno$Use<-gsub("TOXIC", "CULTURAL", etno$Use) 
 etno <- etno[!etno$Use=="ANIMAL FOOD",]
 etno <- etno[!etno$Use=="OTHER",]
@@ -197,6 +197,7 @@ View(resu)
 # points(compMDS$points, pch=21, cex=1.3, col="black", bg =  alpha(cols,0.9))
 # ordihull(compMDS, resu$Comunidad, col=grid.col, draw="polygon", border="black")
 # orditorp(compMDS,display="sites",cex=1.25,air=0.01)
+plot.new()
 centro_use <- as.data.frame(t(summary(ordihull(useMDS, resu$Comunidad))))
 centro_comp <-as.data.frame(t(summary(ordihull(compMDS, resu$Comunidad))))
 #comp_euc <- melt(dist(centroids[,1:2], method = "euclidean", diag = F))
@@ -215,20 +216,23 @@ df_4 <- df_3[df_3$row <= df_3$col, ]
 df_4$value <- mat[cbind(df_4$row, df_4$col)]
 df_4 <- df_4[,3:5]
 colnames(df_4) <- c("Community1", "Community2", "subtr")
+df_4 <- df_4 %>% filter(!subtr==0)
 df_4$group <- paste(df_4$Community1, df_4$Community2, sep="-")
 df_4 <- df_4 %>% mutate (value_fill= ifelse(subtr<0, "Cultural", "Floristic"))
+length(df_4$subtr[df_4$subtr>0])/length(df_4$subtr)*100 # MORE FLORISTIC DIFFERENCES IN 64% of the cases
+length(df_4$subtr[df_4$subtr<0])/length(df_4$subtr)*100 # MORE CULURTAL DIFF in 36% of the cases
+# CONVERGENCE 64%, DIVERGENCE 36%
 
-
-bar_predominance <- ggplot(df_4, aes(x=subtr, y=reorder(group,subtr), fill=value_fill))+
+bar_predominance <- ggplot(df_4, aes(x=-subtr, y=reorder(group,-subtr), fill=value_fill))+
   geom_bar(stat='identity')+
-  scale_fill_manual(values=c('#E69F00', '#299617'), name="Difference by:", labels = c("More cultural distance than floristic", "More floristic distance than cultural"))+
+  scale_fill_manual(values=c('#CE8E00', '#DDC181'), name= "", labels = c("Divergence", "Convergence"))+
   #theme_classic()+
   theme(axis.title.y=element_blank(),
           axis.text.y=element_blank(),
           axis.ticks.y=element_blank(),
         panel.background = element_blank(),
-        legend.position = c(0.6, 0.2))+
-  labs(x = "Difference between cultural and floristic distance", title="Predominant floristic or cultural distance among communities")
+        legend.position = c(0.6, 0.2))
+ # labs(x = "Difference between cultural and floristic distance", title="Predominant d or cultural distance among communities")
 
 bar_predominance 
 
@@ -247,9 +251,9 @@ df_new <- data.frame(Com1=df_4$Community1,
 
 
 
-legend_tile <- ggplot(data = df_4, aes(y=reorder(group,subtr)))+
-  geom_tile(size = 10, data=df_new, aes(y=reorder(group,subtr), x=Pair1, fill=Com1))+
-  geom_tile(size = 10, data=df_new, aes(y=reorder(group,subtr), x=Pair2, fill=Com2))+
+legend_tile <- ggplot(data = df_4, aes(y=reorder(group,-subtr)))+
+  geom_tile(size = 10, data=df_new, aes(y=reorder(group,-subtr), x=Pair1, fill=Com1))+
+  geom_tile(size = 10, data=df_new, aes(y=reorder(group,-subtr), x=Pair2, fill=Com2))+
   scale_fill_manual(values = pal) + coord_equal()  + 
   theme (axis.title.x=element_blank(),
          axis.text.x=element_blank(),
@@ -262,7 +266,7 @@ legend_tile
 
 
 legend_tile  + bar_predominance
-ggsave ("predominant.svg",height=10,width=8)
+ggsave ("predominant_2.svg",height=10,width=8)
 
 
 
