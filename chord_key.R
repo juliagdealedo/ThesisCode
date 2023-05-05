@@ -100,6 +100,15 @@ etno <- etno[!etno$Use=="ENVIRONMENTAL",]
 
 
 # KEYSTONES
+families <- rbind("Malvaceae", "Lecythidaceae", "Urticaceae", "Arecaceae", "Lecythidaceae", "Arecaceae", "Nyctaginaceae", 
+  "Myristicaceae", "Bignoniaceae", "Siparunaceae", "Bixaceae", "Ulmaceae", "Malvaceae", "Rubiaceae", 
+  "Salicaceae", "Bignoniaceae", "Fabaceae", "Arecaceae", "Boraginaceae", "Melastomataceae", "Fabaceae", 
+  "Burseraceae", "Arecaceae", "Moraceae", "Arecaceae", "Burseraceae", "Euphorbiaceae") 
+
+data_vec <- data.frame(families)            # Create data frame
+dplyr::count(data_vec, families)            # Applying count function
+
+
 
 df_etno <- etno %>% drop_na(Plot)
 
@@ -129,6 +138,8 @@ keystones_vern_text %>% slice_sample()
 keystones_vern_text <- especie2 %>% drop_na(Species) %>% group_by(Comunidad, Species,Family, Vernacular, Text) %>% 
   filter (Category=="CULTURAL") %>% 
   summarise(Use_number=n_distinct(Use))
+
+
 
 as.data.frame(keystones_vern_text %>% filter (Comunidad=="Yamino")) %>% sample_n(3)
 as.data.frame(keystones_vern_text %>% filter (Comunidad=="Bolivar")) %>% sample_n(3)
