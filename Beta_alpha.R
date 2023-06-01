@@ -9,6 +9,7 @@ library(readxl)
 library(tidyverse)
 library(flextable) 
 library(reshape2)
+library(data.table)
 
 # Import data ####
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/data") 
@@ -195,15 +196,15 @@ ggsave("Alpha_april.pdf")
 # BETA
 
 # 
-# setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/github/cap2") 
+ setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/github/cap2") 
 # dir()
-#load(file = "dataluis.RData")
-
+load(file = "dataluis.RData")
+??data.table
 
 indices <- df$Plot
 variables <- df$Community
 dt <- data.table(indices, variables)
-
+library(e1071)
 get_permutations <- function(df){
   perm <- permutations(nrow(unique(df[,1])), 2, df$indices)
   as.data.table(perm)
