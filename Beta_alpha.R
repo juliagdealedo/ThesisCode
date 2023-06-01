@@ -62,12 +62,19 @@ etno <- etno[!etno$Use=="MARKETED",]
 etno <- etno[!etno$Use=="WILD ANIMAL",]
 
 
+# families table
 
+TableThesis <- etno %>% group_by(Family, Category2) %>% count(Comunidad)
 
+df <- etno %>%
+  group_by(Family, Category2) %>%
+  summarise(count = n_distinct(Comunidad))
 
+df1 <- reshape2::dcast(df , Family~Category2, value.var="count", fill=0)
+df1
 
-
-
+TableThesis<-qflextable(df1)
+print(TableThesis, preview="docx")
 
 # 2. Does knowledge depend on alpha and beta diversity?
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/data") 
