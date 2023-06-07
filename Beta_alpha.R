@@ -10,7 +10,7 @@ library(tidyverse)
 library(flextable) 
 library(reshape2)
 library(data.table)
-
+library(officer)
 # Import data ####
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/data") 
 resu_original <- read.table("resu_cat")
@@ -22,9 +22,20 @@ str(aguapolo)
 length(unique(etno$Species))
 plots_aguapolo <- unique(aguapolo$Cod_plot)
 
+
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/data") 
 plots_aguapolo
 comp_original <- read.table("composition")
+comp_original$WasColllected<-gsub("True", 1, comp_original$WasColllected) #
+comp_original$WasColllected<-gsub("False", 0, comp_original$WasColllected) #
+comp_original$WasColllected <- as.numeric(comp_original$WasColllected)
+intro_table <- comp_original %>% group_by(Project) %>% 
+  summarise(Plots = n_distinct(Plot), Items = length(Cod_item), Species = n_distinct(Species),
+            Collections = sum(WasColllected))
+
+intro_table$Collections/intro_table$Species
+intro_thesisf <- flextable(intro_table)
+print(intro_thesisf, preview="docx")
 comp <- comp_original %>% filter(!Cod_plot %in% plots_aguapolo)
 length(unique(comp$Species))
 aguapolo_spp <- setdiff(aguapolo$Species, etno$Species)
@@ -62,9 +73,75 @@ etno <- etno[!etno$Use=="MARKETED",]
 etno <- etno[!etno$Use=="WILD ANIMAL",]
 
 
+# species table
+
+
+
+df <- etno %>%
+  group_by(Family, Species, Category2) %>%
+  summarise(count = n_distinct(Category2))
+View(df)
+
+df <- df %>% drop_na()
+
+df1 <- reshape2::dcast(df , Family+Species~Category2, value.var="count", fill=0)
+str(df1)
+
+df1$Species <- gsub("\\(D)", "P.", df1$Species) 
+df1$Species <- gsub("\\(Y)", "E.", df1$Species) 
+df1$Species <- gsub("\\(M)", "B.", df1$Species) 
+df1$Species <- gsub("  ", " ", df1$Species) 
+df1$Species <- gsub("NA_", "sp.", df1$Species) 
+df1$Species <- gsub("\\?", "", df1$Species) 
+df1$Species <- gsub("[[:digit:]]", " ", df1$Species) 
+
+df1 <- df1 %>% mutate_if(is.numeric, str_replace_all, pattern = "0", replacement = " ")
+str(df1)
+df1 <- unique(df1)
+df1 <- df1 %>% mutate_if(is.character, str_replace_all, pattern = "1", replacement = "\U2714")
+#df1 <- df1 %>% mutate_if(is.character, str_replace_all, pattern = "1", replacement = "X")
+df1
+
+head(df1)
+
+
+set_flextable_defaults(
+  font.size = 8,
+  padding = 1,
+  border.color = "#CCCCCC",
+  line_spacing = 1
+)
+
+
+custom_border <- fp_border(style = "solid", width=.2, color="#CCCCCC")
+
+TableThesis <- flextable(df1) |> 
+add_header_lines(values = "Table S1. Plant species and use categories cited by Indigenous communities studied in this thesis. 
+                 Capital letters refer to the morphospecies found in the Bolivia (B.), Ecuador (E.) and Peru (P.). ") |>
+italic(j = ~Species, italic = TRUE, part = "body") |> 
+padding(padding.top =4, part = "header", i=2) |>
+bold (i = 2, part = "header")|> 
+merge_v(j = ~ Family) |>
+border_inner_h( part="body", border = custom_border)|>
+rotate(j = 3:9, align = "bottom", rotation = "btlr", part = "header")|> 
+autofit()
+TableThesis
+
+#bg(j = ~ . - rowname, bg = "blue") 
+
+#print(TableThesis, preview = "docx")
+
+library(rmarkdown)
+TableThesis<-flextable(df1) %>% save_as_docx( path = "tablethesisspp.docx")
+
+
 # families table
 
 TableThesis <- etno %>% group_by(Family, Category2) %>% count(Comunidad)
+TableThesis$Species <- gsub("(D)", "", TableThesis$Species) 
+TableThesis$Species <- gsub("[[:digit:]]", "", TableThesis$Species) 
+
+
 
 df <- etno %>%
   group_by(Family, Category2) %>%
