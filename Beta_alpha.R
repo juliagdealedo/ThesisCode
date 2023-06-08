@@ -35,7 +35,7 @@ intro_table <- comp_original %>% group_by(Project) %>%
 
 intro_table$Collections/intro_table$Species
 intro_thesisf <- flextable(intro_table)
-print(intro_thesisf, preview="docx")
+#print(intro_thesisf, preview="docx")
 comp <- comp_original %>% filter(!Cod_plot %in% plots_aguapolo)
 length(unique(comp$Species))
 aguapolo_spp <- setdiff(aguapolo$Species, etno$Species)
@@ -94,6 +94,20 @@ df1$Species <- gsub("  ", " ", df1$Species)
 df1$Species <- gsub("NA_", "sp.", df1$Species) 
 df1$Species <- gsub("\\?", "", df1$Species) 
 df1$Species <- gsub("[[:digit:]]", " ", df1$Species) 
+df1$Species <- gsub(" P.sp.", " sp. (P)", df1$Species)
+df1$Species <- gsub(" E.sp.", " sp. (E)", df1$Species)
+df1$Species <- gsub(" B.sp.", " sp. (B)", df1$Species)
+df1$Species <- gsub(" B. sp.", " sp. (B)", df1$Species)
+df1$Species <- gsub(" P.aff.", " aff.", df1$Species)
+df1$Species <- gsub(" E.aff.", " aff.", df1$Species)
+df1$Species <- gsub(" B.aff.", " aff.", df1$Species)
+df1$Species <- gsub("_aff._", "", df1$Species)
+df1$Species <- gsub("B.vel sp. nov. sp. ", " sp. (B)", df1$Species)
+
+
+
+
+
 
 df1 <- df1 %>% mutate_if(is.numeric, str_replace_all, pattern = "0", replacement = " ")
 str(df1)
@@ -116,8 +130,7 @@ set_flextable_defaults(
 custom_border <- fp_border(style = "solid", width=.2, color="#CCCCCC")
 
 TableThesis <- flextable(df1) |> 
-add_header_lines(values = "Table S1. Plant species and use categories cited by Indigenous communities studied in this thesis. 
-                 Capital letters refer to the morphospecies found in the Bolivia (B.), Ecuador (E.) and Peru (P.). ") |>
+add_header_lines(values = "Table S1. Plant species and use categories cited by Indigenous communities studied in this thesis. Capital letters refer to the morphospecies found in the Bolivia (B), Ecuador (E) and Peru (P). ") |>
 italic(j = ~Species, italic = TRUE, part = "body") |> 
 padding(padding.top =4, part = "header", i=2) |>
 bold (i = 2, part = "header")|> 
@@ -132,7 +145,7 @@ TableThesis
 #print(TableThesis, preview = "docx")
 
 library(rmarkdown)
-TableThesis<-flextable(df1) %>% save_as_docx( path = "tablethesisspp.docx")
+#TableThesis<-flextable(df1) %>% save_as_docx( path = "tablethesisspp.docx")
 
 
 # families table
