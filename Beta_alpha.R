@@ -164,7 +164,7 @@ df1 <- reshape2::dcast(df , Family~Category2, value.var="count", fill=0)
 df1
 
 TableThesis<-qflextable(df1)
-print(TableThesis, preview="docx")
+#print(TableThesis, preview="docx")
 
 # 2. Does knowledge depend on alpha and beta diversity?
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/data") 
@@ -175,12 +175,27 @@ etno$Plot <- as.numeric(etno$Plot)
 
 df_spp <- comp %>% group_by(Plot) %>% summarize(Species_number = n_distinct(Species)) 
 df_use <- etno %>%  group_by(Plot) %>% summarize(Uses_number = n_distinct(Use)) %>% filter(!is.na(Plot))
+df_ind <- comp %>%  group_by(Plot) %>% summarize(Ind_number = n_distinct(Cod_item)) %>% filter(!is.na(Plot))
 
 df <- merge(df_spp, df_use, by="Plot")
+df_ind <- merge (df, df_ind, by="Plot")
 plot_com <- na.omit(as.data.frame(unique(cbind(etno$Plot, etno$Comunidad))))
 colnames(plot_com) <- c("Plot", "Community")
 df <- merge(df, plot_com, by="Plot")
-# 
+
+matri <- dcast(comp, Plot~Species, value.var="Species", fill=0)
+matri <- column_to_rownames(matri,var="Plot")
+library(vegan)
+hshannon <- diversity(matri, index="shannon") 
+simpson <- diversity(matri, index="simpson")
+invsimpson <- diversity(matri, index="invsimpson")
+jeve <- hshannon/log(specnumber(matri))
+falpha <- fisher.alpha(matri) 
+Srar <- rarefy(matri, min(rowSums(matri)))
+table.s1 <- cbind(df_ind, falpha,hshannon,simpson,invsimpson,jeve,Srar)
+cor <- cor(table.s1[,-c(1)])
+corrplot::corrplot(cor)
+
 library(patchwork)
 library(ggeffects)
 library(lme4)
