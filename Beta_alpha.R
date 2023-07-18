@@ -80,41 +80,75 @@ etno <- etno[!etno$Use=="WILD ANIMAL",]
 df <- etno %>%
   group_by(Family, Species, Category2) %>%
   summarise(count = n_distinct(Category2))
-View(df)
+
 
 df <- df %>% drop_na()
 
 df1 <- reshape2::dcast(df , Family+Species~Category2, value.var="count", fill=0)
 str(df1)
+# 
+# df1$Species <- gsub("\\(D)", "P.", df1$Species) 
+# df1$Species <- gsub("\\(Y)", "E.", df1$Species) 
+# df1$Species <- gsub("\\(M)", "B.", df1$Species) 
+# df1$Species <- gsub("  ", " ", df1$Species) 
+# df1$Species <- gsub("NA_", "sp.", df1$Species) 
+# df1$Species <- gsub("\\?", "", df1$Species) 
+# df1$Species <- gsub("[[:digit:]]", " ", df1$Species) 
+# df1$Species <- gsub(" P.sp.", " sp. (P)", df1$Species)
+# df1$Species <- gsub(" E.sp.", " sp. (E)", df1$Species)
+# df1$Species <- gsub(" B.sp.", " sp. (B)", df1$Species)
+# df1$Species <- gsub(" B. sp.", " sp. (B)", df1$Species)
+# df1$Species <- gsub(" P.aff.", " aff.", df1$Species)
+# df1$Species <- gsub(" E.aff.", " aff.", df1$Species)
+# df1$Species <- gsub(" B.aff.", " aff.", df1$Species)
+# df1$Species <- gsub("_aff._", "", df1$Species)
+# df1$Species <- gsub("B.vel sp. nov. sp. ", " sp. (B)", df1$Species)
+# 
 
-df1$Species <- gsub("\\(D)", "P.", df1$Species) 
-df1$Species <- gsub("\\(Y)", "E.", df1$Species) 
-df1$Species <- gsub("\\(M)", "B.", df1$Species) 
+
+df1$Species <- gsub("\\(D)", "", df1$Species) 
+df1$Species <- gsub("\\(Y)", "", df1$Species) 
+df1$Species <- gsub("\\(M)", "", df1$Species) 
 df1$Species <- gsub("  ", " ", df1$Species) 
 df1$Species <- gsub("NA_", "sp.", df1$Species) 
 df1$Species <- gsub("\\?", "", df1$Species) 
 df1$Species <- gsub("[[:digit:]]", " ", df1$Species) 
-df1$Species <- gsub(" P.sp.", " sp. (P)", df1$Species)
-df1$Species <- gsub(" E.sp.", " sp. (E)", df1$Species)
-df1$Species <- gsub(" B.sp.", " sp. (B)", df1$Species)
-df1$Species <- gsub(" B. sp.", " sp. (B)", df1$Species)
+df1$Species <- gsub(" P.sp.", " sp.", df1$Species)
+df1$Species <- gsub(" E.sp.", " sp.", df1$Species)
+df1$Species <- gsub(" B.sp.", " sp.", df1$Species)
+df1$Species <- gsub(" B. sp.", " sp.", df1$Species)
 df1$Species <- gsub(" P.aff.", " aff.", df1$Species)
 df1$Species <- gsub(" E.aff.", " aff.", df1$Species)
 df1$Species <- gsub(" B.aff.", " aff.", df1$Species)
 df1$Species <- gsub("_aff._", "", df1$Species)
-df1$Species <- gsub("B.vel sp. nov. sp. ", " sp. (B)", df1$Species)
+df1$Species <- gsub("B.vel sp. nov. sp. ", " sp.", df1$Species)
+
+# intento para conseguir numeros consecutivos pero fallido 
+
+# df1$ModifiedSpecies <- df1$Species  # Create a new column for modified species names
+# 
+# 
+# for (i in 2:length(df1$ModifiedSpecies)) {
+#   if (df1$ModifiedSpecies[i] == df1$ModifiedSpecies[i]) {
+#     count <- 1
+#     while (df1$ModifiedSpecies[i] == df1$ModifiedSpecies[i]) {
+#       count <- count + 1
+#       df1$ModifiedSpecies[i] <- paste(df1$ModifiedSpecies[i], count)
+#       i <- i + 1
+#       if (i > length(df1$ModifiedSpecies)) break
+#     }
+#   }
+# }
 
 
-
-
-
-
+df1
 df1 <- df1 %>% mutate_if(is.numeric, str_replace_all, pattern = "0", replacement = " ")
 str(df1)
 df1 <- unique(df1)
 df1 <- df1 %>% mutate_if(is.character, str_replace_all, pattern = "1", replacement = "\U2714")
 #df1 <- df1 %>% mutate_if(is.character, str_replace_all, pattern = "1", replacement = "X")
 df1
+
 
 head(df1)
 
@@ -130,7 +164,7 @@ set_flextable_defaults(
 custom_border <- fp_border(style = "solid", width=.2, color="#CCCCCC")
 
 TableThesis <- flextable(df1) |> 
-add_header_lines(values = "Table S1. Plant species and use categories cited by Indigenous communities studied in this thesis. Capital letters refer to the morphospecies found in the Bolivia (B), Ecuador (E) and Peru (P). ") |>
+add_header_lines(values = "Table S1. Plant species and use categories cited by Indigenous communities studied in this thesis.") |>
 italic(j = ~Species, italic = TRUE, part = "body") |> 
 padding(padding.top =4, part = "header", i=2) |>
 bold (i = 2, part = "header")|> 
@@ -142,7 +176,7 @@ TableThesis
 
 #bg(j = ~ . - rowname, bg = "blue") 
 
-#print(TableThesis, preview = "docx")
+print(TableThesis, preview = "docx")
 
 library(rmarkdown)
 #TableThesis<-flextable(df1) %>% save_as_docx( path = "tablethesisspp.docx")

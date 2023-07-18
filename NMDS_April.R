@@ -105,12 +105,19 @@ etno <- etno[!etno$Use=="OTHER",]
 etno <- etno[!etno$Use=="MARKETED",]
 etno <- etno[!etno$Use=="WILD ANIMAL",]
 
+df_etno <- as.data.frame(unique(cbind(etno$Species, etno$Family, etno$`Plant part`, etno$Use, etno$`Uso textual según cuaderno de campo`)))
 
 
-
-
-
-
+dom_cap1 <- c("Coussarea brevicaulis"	,"Hirtella racemosa"	,"Amaioua guianensis"	,"Euterpe precatoria"	,"Iriartea deltoidea"	,"Cyathea delgadii"	,"Guarea macrophylla"	,"Matisia malacocalyx"	,"Guarea kunthiana"	,
+  "Guarea pterorhachis"	,"Otoba parvifolia"	,"Iriartea deltoidea"	,"Pseudolmedia laevis"	,"Leonia glycycarpa"	,"Otoba parvifolia"	,"Rinorea pubiflora"	,"Pseudolmedia laevigata"	,
+  "Pentagonia spathicalyx"	,"Rinorea viridifolia"	,"Rinorea apiculata"	,"Phytelephas tenuicaulis"	,
+  "Siparuna bifida"	,"Siparuna decipiens"	,"Socratea salazarii"	,"Socratea exorrhiza",
+  "Styloceras brokawii","Wettinia augusta"	)
+df_etno <- as.data.frame(unique(cbind(etno$Species, etno$Use)))
+colnames(df_etno) <- c("Species", "Use")
+df_dom <- unique(df_etno[df_etno$Species %in% dom_cap1,])
+coun <- df_dom %>% count( Species, sort = TRUE)
+print(flextable(coun), preview="docx")
 
 df_etno <- as.data.frame(unique(cbind(etno$informant, etno$Species, etno$Use)))
 colnames(df_etno) <- c("Informant", "Species", "Use")
@@ -130,6 +137,14 @@ etno
 df_etno4$Plot <- as.numeric (df_etno4$Plot)
 use_dist <- reshape2::dcast(df_etno4, Plot~Use, value.var="Species", fill=0)
 use_dist <- column_to_rownames(use_dist, "Plot")
+
+# overall tables
+
+
+
+
+
+
 
 # NMDS
 compMDS.use <-metaMDS(use_dist, distance="bray", k=2, trymax= 1000, autotransform=TRUE) ##k is the number of dimensions
@@ -189,15 +204,16 @@ View(resu)
 
 
 # 
-# plot(useMDS$points, pch=21, cex=1.5, col="white",bg ="white", cex.axis=1, cex.lab=1 ,xlab="NMDS1", ylab="NMDS2", main="Knowledge")
-# legend("topleft", cex=0.8, pch=16, bg="black", col=pal, legend=labels, bty="n", inset = c(0, 0))
-# points(useMDS$points, pch=21, cex=1.3, col="black", bg = alpha(cols,0.9))
-# ordihull(useMDS, resu$Comunidad, col=grid.col, draw="polygon", border="white", label = TRUE)
-# #orditorp(useMDS,display="sites",cex=1,air=0.01)
-# points(compMDS$points, pch=21, cex=1.3, col="black", bg =  alpha(cols,0.9))
-# ordihull(compMDS, resu$Comunidad, col=grid.col, draw="polygon", border="black")
-# orditorp(compMDS,display="sites",cex=1.25,air=0.01)
+
+
+
 plot.new()
+
+
+set.seed(123) 
+useMDS <-metaMDS(use_dist, distance="bray", k=2, trymax= 1000) ##k is the number of dimensions
+compMDS <-metaMDS(abs_comp_dist, distance="jaccard", k=2, trymax= 1000, previous.best = useMDS) ##k is the number of dimensions
+
 centro_use <- as.data.frame(t(summary(ordihull(useMDS, resu$Comunidad))))
 centro_comp <-as.data.frame(t(summary(ordihull(compMDS, resu$Comunidad))))
 #comp_euc <- melt(dist(centroids[,1:2], method = "euclidean", diag = F))
@@ -221,20 +237,63 @@ df_4$group <- paste(df_4$Community1, df_4$Community2, sep="-")
 df_4 <- df_4 %>% mutate (value_fill= ifelse(subtr<0, "Cultural", "Floristic"))
 length(df_4$subtr[df_4$subtr>0])/length(df_4$subtr)*100 # MORE FLORISTIC DIFFERENCES IN 64% of the cases
 length(df_4$subtr[df_4$subtr<0])/length(df_4$subtr)*100 # MORE CULURTAL DIFF in 36% of the cases
-# CONVERGENCE 64%, DIVERGENCE 36%
 
-bar_predominance <- ggplot(df_4, aes(x=-subtr, y=reorder(group,-subtr), fill=value_fill))+
-  geom_bar(stat='identity')+
-  scale_fill_manual(values=c('#CE8E00', '#DDC181'), name= "", labels = c("Divergence", "Convergence"))+
-  #theme_classic()+
-  theme(axis.title.y=element_blank(),
-          axis.text.y=element_blank(),
-          axis.ticks.y=element_blank(),
-        panel.background = element_blank(),
-        legend.position = c(0.6, 0.2))
- # labs(x = "Difference between cultural and floristic distance", title="Predominant d or cultural distance among communities")
+## SIGNIFICANT???
 
-bar_predominance 
+set.seed(123) 
+n_repeticiones <- 99  # Número de repeticiones
+
+diferencias_aleatorias_rep <- vector("numeric", n_repeticiones)
+
+df_66 <- NULL
+conf_int <- NULL
+for (i in 1:n_repeticiones) {
+use_dist_aleatoria <- use_dist[sample(nrow(use_dist)), ]
+rownames(use_dist_aleatoria) <- rownames(use_dist)
+comp_dist_aleatoria <- abs_comp_dist[sample(nrow(abs_comp_dist)), ]
+rownames(comp_dist_aleatoria) <- rownames(abs_comp_dist)
+useMDS <-metaMDS(use_dist_aleatoria, distance="bray", k=2, trymax= 1000) ##k is the number of dimensions
+compMDS <-metaMDS(comp_dist_aleatoria, distance="jaccard", k=2, trymax= 1000, previous.best = useMDS) ##k is the number of dimensions
+centro_use <- as.data.frame(t(summary(ordihull(useMDS, resu$Comunidad))))
+centro_comp <-as.data.frame(t(summary(ordihull(compMDS, resu$Comunidad))))
+points(centro_comp$NMDS1, centro_comp$NMDS2, pch=2)
+points(centro_use$NMDS1, centro_use$NMDS2, pch=4)
+mat_comp <- as.matrix(dist(centro_comp[,1:2], method = "maximum", diag = F))
+mat_use <- as.matrix(dist(centro_use[,1:2], method = "maximum", diag = F))
+mat <- mat_comp-mat_use
+df_rm <- data.frame(which(!is.na(mat), arr.ind = TRUE))
+df_2_rm <- reshape2::melt(mat)
+df_3_rm <- cbind(df_rm, df_2_rm)
+df_colours <- df_3_rm[df_3_rm$row <= df_3_rm$col, ]
+df_4_rm <- df_3_rm[df_3_rm$row <= df_3_rm$col, ]
+df_4_rm$value <- mat[cbind(df_4_rm$row, df_4_rm$col)]
+df_4_rm <- df_4_rm[,3:5]
+colnames(df_4_rm) <- c("Community1", "Community2", "subtr")
+df_4_rm <- df_4_rm %>% filter(!subtr==0)
+df_4_rm$group <- paste(df_4_rm$Community1, df_4_rm$Community2, sep="-")
+df_4_rm <- df_4_rm %>% mutate (value_fill= ifelse(subtr<0, "Cultural", "Floristic"))
+df_66[[i]] <- df_4_rm$subtr
+
+}
+# Unir los valores de cada fila en un solo vector por fila
+valores_por_fila <- lapply(df_66, function(x) unlist(x))
+matriz_valores <- as.data.frame(do.call(rbind, valores_por_fila))
+for (i in 1:ncol(matriz_valores)) {
+conf_int_rm <- quantile(matriz_valores[,i], probs = c(0.05, 0.95))
+lower_limits <- as.data.frame(conf_int_rm)[1,1]
+upper_limits <- as.data.frame(conf_int_rm)[2,1]
+df_4$Significativo[i] <- ifelse(df_4$subtr[i] < lower_limits| df_4$subtr[i]> upper_limits, TRUE, FALSE)
+}
+
+df_4
+
+13/36
+5/36
+18/36
+
+
+
+# plot
 
 pal <- brewer.pal(10, "Paired")
 pal <- c( "#1F78B4", "#B2DF8A", "#33A02C",  "#CB6856","#6A3D9A", "#FDBF6F", "#FF7F00", "#CAB2D6", "#A6CEE3")
@@ -251,9 +310,9 @@ df_new <- data.frame(Com1=df_4$Community1,
 
 
 
-legend_tile <- ggplot(data = df_4, aes(y=reorder(group,-subtr)))+
-  geom_tile(size = 10, data=df_new, aes(y=reorder(group,-subtr), x=Pair1, fill=Com1))+
-  geom_tile(size = 10, data=df_new, aes(y=reorder(group,-subtr), x=Pair2, fill=Com2))+
+legend_tile <- ggplot(data = df_4, aes(y=reorder(group,subtr)))+
+  geom_tile(size = 10, data=df_new, aes(y=reorder(group,subtr), x=Pair1, fill=Com1))+
+  geom_tile(size = 10, data=df_new, aes(y=reorder(group,subtr), x=Pair2, fill=Com2))+
   scale_fill_manual(values = pal) + coord_equal()  + 
   theme (axis.title.x=element_blank(),
          axis.text.x=element_blank(),
