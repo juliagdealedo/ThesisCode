@@ -29,7 +29,6 @@ library(ggplot2)
 library(patchwork)
 
 # Read the data 
-
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/data") 
 
 comp_original <- read.table("composition")
@@ -49,7 +48,7 @@ comp <- comp_original %>% filter(!Cod_plot %in% plots_aguapolo)
 length(unique(comp$Species))
 aguapolo_spp <- setdiff(aguapolo$Species, etno$Species)
 
-# Re-categorization and re-naming of ethnobotanical categories
+# Re-categorization and re-naming of ethnobotanical categories and uses
 
 # Category
 etno$Category2 <- etno$Category
@@ -82,8 +81,9 @@ etno <- etno[!etno$Use=="ENVIRONMENTAL",]
 
 ## 5.3.2. Does plant knowledge depend on alpha and beta diversity?
 
-# Count spp and uses per plot
+# ALPHA
 
+# Count spp and uses per plot
 etno$Plot <- as.numeric(etno$Plot)
 df_spp <- comp %>% group_by(Plot) %>% summarize(Species_number = n_distinct(Species)) 
 df_use <- etno %>%  group_by(Plot) %>% summarize(Uses_number = n_distinct(Use)) %>% filter(!is.na(Plot))
@@ -95,7 +95,6 @@ colnames(plot_com) <- c("Plot", "Community")
 df_spp_use <- merge(df_spp_use, plot_com, by="Plot")
 
 # Check correlation with other alpha indexes
-
 spp_matrix <- dcast(comp, Plot~Species, value.var="Species", fill=0)
 spp_matrix <- column_to_rownames(spp_matrix,var="Plot")
 hshannon <- diversity(spp_matrix, index="shannon") 
@@ -109,7 +108,6 @@ cor <- cor(table.s1[,-c(1)])
 corrplot::corrplot(cor) # >> Selecting species number
 
 # Models and statistics 
-
 for1 <- "Uses_number ~ (1|Community)"
 for2 <- "Uses_number ~ Species_number"
 for3 <- "Uses_number ~ Species_number + (1|Community)"
@@ -121,10 +119,9 @@ glm_p1 <- glmer (for1, family=poisson(link = log), data = df)
 glm_p2 <- glm(for2, family=poisson(link = log), data = df)
 glm_p3 <- glmer (for3, family=poisson(link = log), data = df)
 glm_p4 <- glmer (for4, family=poisson(link = log), data = df)
-
 AICc <- round(AIC( glm_p1, glm_p2, glm_p3, glm_p4), 2)
 Formulation <- c(for1, for2, for3, for4)
-gof(glm_p3) # overdispersion
+gof(glm_p3) 
 
 # 2) Negative binomial with negative cuadratic terms
 for1 <- "Uses_number ~ (1|Community)"
@@ -135,7 +132,6 @@ glmer1 <- glmer.nb (for1, data = df)
 glmer2 <- glm (for2, data = df)
 glmer3 <- glmer.nb (for3, data = df) 
 glmer4 <- glmer.nb (for4, data = df)
-
 AICc <- round(AIC( glmer1, glmer2, glmer3, glmer4), 2)
 
 # Check residuals
@@ -149,7 +145,6 @@ plot(Res ~ df$Species_number, xlab="NAP", ylab="Residuals", main = "NAP") > abli
 hist(Res, main="Histogram of residuals", xlab="Residuals")
 qqnorm(Res)
 qqline(Res)
-
 Formulation <- c(for1, for2, for3, for4)
 table1 <- cbind(Formulation, AICc)
 rglm1 <- round(r.squaredGLMM(glmer1)[1,], 3) 
@@ -200,7 +195,7 @@ total_alpha/ind_alpha
 ggsave("Alpha.svg")
 ggsave("Alpha.pdf")
 
-#### BETA
+# BETA
 
 # Prepare the table: get all possible combinations of two columns
 indices <- df$Plot
