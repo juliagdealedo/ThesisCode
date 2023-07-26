@@ -29,6 +29,8 @@ comp_original <- read.table("composition")
 comp_original$WasColllected<-gsub("True", 1, comp_original$WasColllected) #
 comp_original$WasColllected<-gsub("False", 0, comp_original$WasColllected) #
 comp_original$WasColllected <- as.numeric(comp_original$WasColllected)
+
+
 intro_table <- comp_original %>% group_by(Project) %>% 
   summarise(Plots = n_distinct(Plot), Items = length(Cod_item), Species = n_distinct(Species),
             Collections = sum(WasColllected))
@@ -73,15 +75,56 @@ etno <- etno[!etno$Use=="MARKETED",]
 etno <- etno[!etno$Use=="WILD ANIMAL",]
 
 
-# species table
+# cultural and provisioning 
+etno <- etno[!etno$Category2=="ENVIRONMENTAL",]
+
+etno$Service <- etno$Category2
+etno$Service <- gsub("MEDICINAL", "PROVISIONING", etno$Service)
+etno$Service<-gsub("CULTURAL", "CULTURAL", etno$Service) #
+etno$Service<-gsub("CONSTRUCTION", "PROVISIONING", etno$Service) #
+etno$Service<-gsub("FUEL", "PROVISIONING", etno$Service) #
+etno$Service<-gsub("UTENSILS", "PROVISIONING", etno$Service) #
+etno$Service<-gsub("FOOD", "PROVISIONING", etno$Service) #
+
+unique(cbind(etno$Category2, etno$Service))
+df1 <- unique(etno %>%
+  select(Species, Service))
+df1 <- etno %>%
+  group_by(Category2, Species) %>%
+  summarise(count = n_distinct(Species))
+
+df2 <- etno %>%
+  group_by(Category2, Subcategory, Species, `Uso textual según cuaderno de campo`) %>%
+  summarise(count = n_distinct(Species)) %>%
+  filter(Category2=="CULTURAL")
 
 
+df1 <- etno %>%
+  group_by(Category2, Species) %>%
+  count(Species)
+
+df[2]/length(unique(comp$Species))
+
+length(unique(etno$Species))
+SPP <- unique(comp %>%
+  select (Species, Family))
+USE <- unique(etno %>%
+  select (Species, Service) %>% na.omit())
+
+USE2 <- unique(etno %>%
+                select (Species, Category) %>% na.omit())
+
+NSPP <- merge (SPP, USE, by="Species", all=T)
+counn <- NSPP %>% 
+  group_by(Service) %>%
+  summarise(count = n_distinct(Species))
+counn$count/length(unique(NSPP$Species))
+
+##
 
 df <- etno %>%
   group_by(Family, Species, Category2) %>%
   summarise(count = n_distinct(Category2))
-
-
 df <- df %>% drop_na()
 
 df1 <- reshape2::dcast(df , Family+Species~Category2, value.var="count", fill=0)
@@ -307,6 +350,7 @@ new_data <- data.frame(Species_number=rep(x, length(comunidad)),
 prds <- ggpredict(glmer3, terms=c("Species_number", "Community"), type="random", ci.lvl=0.1)
 
 prds$Community <- prds$group
+library(RColorBrewer)
 pal <- brewer.pal(10, "Paired")
 pal <- c( "#1F78B4", "#B2DF8A", "#33A02C",  "#CB6856","#6A3D9A", "#FDBF6F", "#FF7F00", "#CAB2D6", "#A6CEE3")
 
@@ -331,8 +375,9 @@ ind_alpha <- ggpredict(glmer3, terms=c("Species_number [all]", "Community"), typ
 ind_alpha
 
 total_alpha/ind_alpha
+ggsave("Alpha_april.svg")
 
-ggsave("Alpha_april.pdf")
+#ggsave("Alpha_april.pdf")
 
 
 
@@ -351,8 +396,12 @@ indices <- df$Plot
 variables <- df$Community
 dt <- data.table(indices, variables)
 library(e1071)
-get_permutations <- function(df){
-  perm <- permutations(nrow(unique(df[,1])), 2, df$indices)
+library(vegan)
+library(gtools)
+library(data.table)
+
+get_permutations <- function(dt){
+  perm <- permutations(nrow(unique(dt[,1])), 2, dt$indices)
   as.data.table(perm)
 }
 
@@ -477,7 +526,7 @@ head(plot_data)
 all_beta <- ggplot(data2) +
   geom_point(data=data2, aes(x=comp, y=etno), color="gray70")+
   geom_line(data=plot_data, aes(x = comp, y = pred, colour = Comunidad), color="black")+
-  geom_ribbon(data=plot_data, aes(x=comp, ymin = low, ymax = upp), alpha = 0.1) +
+  geom_ribbon(data=plot_data, aes(x=comp, ymin = low, ymax = upp), alpha = 0.2) +
   theme_classic()+labs(x="Floristic dissimilarity", y ="Knowledge dissimilarity")+
   scale_color_manual(values = pal) + scale_fill_manual(values = pal)+
   scale_x_continuous(limits = c(0.57, 1)) +
@@ -489,7 +538,7 @@ individual_beta <- ggplot(data2) +
   geom_point(data=data2, aes(x=comp, y=etno, colour=Comunidad))+
   facet_wrap(vars(Comunidad))+
   geom_line(data=plot_data_ind, aes(x = comp, y = pred, colour = Comunidad))+
-  geom_ribbon(data=plot_data_ind, aes(x=comp, ymin = low, ymax = upp), alpha = 0.1) +
+  geom_ribbon(data=plot_data_ind, aes(x=comp, ymin = low, ymax = upp), alpha = 0.2) +
   theme_classic()+labs(x="Floristic dissimilarity", y ="Knowledge dissimilarity")+
   scale_color_manual(values = pal) + scale_fill_manual(values = pal)+
   scale_x_continuous(limits = c(0.57, 1)) +
@@ -500,6 +549,7 @@ individual_beta <- ggplot(data2) +
 all_beta/individual_beta
 ggsave("Beta_april.pdf")
 
+ggsave("Beta_april.svg")
 
 
 # Sum plots
@@ -507,6 +557,7 @@ patch <- total_alpha/ind_alpha | all_beta/individual_beta
 patch+plot_annotation(tag_levels = 'A')
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/github/cap2/output/figures")
 ggsave("Figure1_cap2.pdf",height = 17, width = 17,  scale=.5)
+ggsave("Figure1_cap2.svg",height = 17, width = 17,  scale=.5)
 
 
 

@@ -9,6 +9,7 @@ get_pkgs_info()
 out.dir <- setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos")
 get_pkgs_info(pkgs = pks$pkg, out.dir = getwd())
 citation()
+
 # CAP2 - Understanding traditional knowledge distribution in western Amazonia #
 # JGA
 
@@ -309,6 +310,20 @@ df_new <- data.frame(Com1=df_4$Community1,
                       Pair2=2)
 
 
+bar_predominance <- ggplot(df_4, aes(x=subtr, y=reorder(group,subtr), fill=value_fill))+
+  geom_bar(stat='identity')+
+  scale_fill_manual(values=c('#E69F00', '#299617'), name="Difference by:", labels = c("More cultural distance than floristic", "More floristic distance than cultural"))+
+  #theme_classic()+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.background = element_blank(),
+        legend.position = c(0.6, 0.2))+
+  labs(x = "Difference between cultural and floristic distance", title="Predominant floristic or cultural distance among communities")
+
+
+bar_predominance 
+
 
 legend_tile <- ggplot(data = df_4, aes(y=reorder(group,subtr)))+
   geom_tile(size = 10, data=df_new, aes(y=reorder(group,subtr), x=Pair1, fill=Com1))+
@@ -325,7 +340,8 @@ legend_tile
 
 
 legend_tile  + bar_predominance
-ggsave ("predominant_2.svg",height=10,width=8)
+ggsave ("Figure5.4.svg",height=10,width=8)
+ggsave ("Figure5.4.pdf",height=10,width=8)
 
 
 
