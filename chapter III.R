@@ -4,18 +4,6 @@
 
 # Load necessary libraries
 
-library(tidyr)
-library(tidyverse)
-library(ggplot2)
-library(patchwork)
-library(forcats)
-library(car)
-library(nlme)
-library(corrplot)
-library(plyr)
-library(aods3) 
-
-
 library(readxl)
 library(dplyr)
 library(flextable)
@@ -23,7 +11,6 @@ library(tibble)
 library(reshape2)
 library(ggpubr)
 library(MetBrewer)
-
 library(visreg)
 library(lme4)
 library(MuMIn) 
