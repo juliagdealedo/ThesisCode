@@ -448,11 +448,12 @@ chelsa_list <-list(BIO01CHELSA, BIO02CHELSA, BIO03CHELSA, BIO04CHELSA, BIO05CHEL
 cclim <- stack(chelsa_list)
 locations <- as_tibble(locations_df)
 species_points_cclim <- raster::extract(cclim, locations_df, df = TRUE) 
-species_points_cclim_units <-mutate(species_points_cclim,Bio1 = CHELSA_bio10_01/10,Bio2 = CHELSA_bio10_02/10,Bio3 = CHELSA_bio10_03/10,Bio4 = CHELSA_bio10_04/10,
-                                    Bio5 = CHELSA_bio10_05/10, Bio6 = CHELSA_bio10_06/10,Bio7 = CHELSA_bio10_07/10,Bio8 = CHELSA_bio10_08/10,
-                                    Bio9 = CHELSA_bio10_09/10,Bio10 = CHELSA_bio10_10/10, Bio11 = CHELSA_bio10_11/10,Bio12 = CHELSA_bio10_12, 
-                                    Bio13 = CHELSA_bio10_13,Bio14 = CHELSA_bio10_14,Bio15 = CHELSA_bio10_15,
-                                    Bio16 = CHELSA_bio10_16, Bio17 = CHELSA_bio10_17, Bio18 = CHELSA_bio10_18, Bio19 = CHELSA_bio10_19)
+species_points_cclim_units <-mutate(species_points_cclim,Bio1 = CHELSA_bio10_01/10,Bio2 = CHELSA_bio10_02/10, 
+  Bio3 = CHELSA_bio10_03/10,Bio4 = CHELSA_bio10_04/10,
+  Bio5 = CHELSA_bio10_05/10, Bio6 = CHELSA_bio10_06/10,Bio7 = CHELSA_bio10_07/10,Bio8 = CHELSA_bio10_08/10,
+  Bio9 = CHELSA_bio10_09/10,Bio10 = CHELSA_bio10_10/10, Bio11 = CHELSA_bio10_11/10,Bio12 = CHELSA_bio10_12, 
+  Bio13 = CHELSA_bio10_13,Bio14 = CHELSA_bio10_14,Bio15 = CHELSA_bio10_15,
+  Bio16 = CHELSA_bio10_16, Bio17 = CHELSA_bio10_17, Bio18 = CHELSA_bio10_18, Bio19 = CHELSA_bio10_19)
 species_points_cclim_units <- species_points_cclim_units[,21:39] # correct units
 colnames(species_points_cclim_units) <- wnames[,-1]
 cclim_resu <-cbind (resu, species_points_cclim_units)
@@ -473,16 +474,11 @@ M<-cor(divcor, use="pairwise.complete.obs")
 p.mat <- cor.mtest(divcor)
 col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
 # Calculate the correlation
-cclim_correlation <- corrplot(M, method="color", col=col(200),  
-                              type="upper", order="original", 
-                              addCoef.col = "black", # Add coefficient of correlation
-                              # Combine with significance
-                              #  p.mat = p.mat, sig.level = 0.02, insig = "blank", 
-                              # hide correlation coefficient on the principal diagonal
-                              diag=F)
+cclim_correlation <- corrplot(M, method="color", col=col(200),type="upper", order="original", 
+                              addCoef.col = "black", diag=F)
 dev.off()
-# PCA
 
+# PCA
 df <- divcor
 df_pca <- prcomp(divcor)
 df_out <- as.data.frame(df_pca$x)
