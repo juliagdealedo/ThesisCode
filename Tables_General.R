@@ -121,6 +121,7 @@ count_spp <- NSPP %>%
 count_spp$count/length(unique(joint$Species))
 
 # Table species and use Supplementary material 9.2
+
 df <- etno %>%
   group_by(Family, Species, Category2) %>%
   summarise(count = n_distinct(Category2))
@@ -148,7 +149,6 @@ df_matrix <- df_matrix %>% mutate_if(is.numeric, str_replace_all, pattern = "0",
 df_matrix <- unique(df_matrix)
 df_matrix <- df_matrix %>% mutate_if(is.character, str_replace_all, pattern = "1", replacement = "\U2714") # check emoji
 df_matrix
-
 # Table settings
 set_flextable_defaults(
   font.size = 8,
@@ -171,3 +171,66 @@ TableThesis <- flextable(df_matrix) |>
 TableThesis
 
 print(TableThesis, preview = "docx")
+
+
+
+# Table species and regions Supplementary material 9.2*
+
+
+comp_original$Species <- str_replace(comp_original$Species, "Cestrum schlechtendahlii", "Cestrum schlechtendalhii")
+comp_original$Species <- str_replace(comp_original$Species, "Cestrum schlechtendalii", "Cestrum schlechtendalhii")
+comp_original$Species <- str_replace(comp_original$Species, "Hirtella (D)sp.", "Hirtella sp.")
+comp_original$Species <- str_replace(comp_original$Species, "Inga (D)nobilis subpsp. quaternata", "Inga nobilis subpsp. quaternata")
+comp_original$Species <- gsub("\\(D)", "", comp_original$Species) 
+comp_original$Species <- gsub("\\(Y)", "", comp_original$Species) 
+comp_original$Species <- gsub("\\(M)", "", comp_original$Species) 
+
+
+df <- comp_original %>%
+  group_by(Family, Species, Region) %>%
+  summarise(count = n_distinct(Region))
+
+
+
+df <- df %>% drop_na()
+df_matrix <- reshape2::dcast(df , Family+Species~Region, value.var="count", fill=0)
+df_matrix <- df_matrix %>% mutate_if(is.numeric, str_replace_all, pattern = "0", replacement = " ")
+df_matrix <- unique(df_matrix)
+df_matrix <- df_matrix %>% mutate_if(is.character, str_replace_all, pattern = "1", replacement = "\U2714") # check emoji
+df_matrix
+#df_matrix <- df_matrix %>% mutate_if(is.character, str_replace_all, pattern = "1", replacement = "X") # check emoji
+
+#write.table(df_matrix, file = "prueba_tabla1.txt", sep = ",", quote = FALSE, row.names = F)
+#write.csv(df_matrix, "prueba_tabla1.csv", row.names = T)
+
+length(unique(df_matrix$Species))
+
+colnames(df_matrix)[-c(1:2)] <- str_sub(colnames(df_matrix)[-c(1:2)], 3, -1)
+
+# Table settings
+set_flextable_defaults(
+  font.size = 8,
+  padding = 1,
+  border.color = "#CCCCCC",
+  line_spacing = 1
+)
+custom_border <- fp_border(style = "solid", width=.2, color="#CCCCCC")
+
+# Plot table S2
+
+TableThesis <- flextable(df_matrix) |> 
+  #add_header_lines(values = "Table 9.S2. Matrix showing the presence-absence of 1930 plant species in the 12 different regions studied in this thesis. Aguapolo, Yariapo, Tumupasa, Tequeje, Ruinas in  Bolivia; Tambopata, Yanesha, Cordillera Azul, Pacaya Samiria, Maijuna in Peru, and Dicaro y Guiyero in Ecuador.") |>
+  italic(j = ~Species, italic = TRUE, part = "body") |> 
+  padding(padding.top =4, part = "header", i=1) |>
+  bold (i = 1, part = "header")|> 
+  merge_v(j = ~ Family) |>
+  border_inner_h( part="body", border = custom_border)|>
+  rotate(j = 3:14, align = "bottom", rotation = "btlr", part = "header")|> 
+  autofit()
+TableThesis
+
+
+#print(TableThesis, preview = "pdf")
+print(TableThesis, preview = "docx")
+#save_as_image(x = TableThesis, path = "/Users/juliag.dealedo/Desktop")
+
