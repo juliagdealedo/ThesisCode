@@ -99,9 +99,59 @@ Table9.2 <- flextable(num_trait)
 
 # Correlate traits Table 9.3
 to_cor <- traits_good %>% select(GF_mean, LA_log, SLA_mean, DM_mean.y, DBH_max, 
-                                 f_mass, f_fleshy, Liana, Palmera, Tree, Hemiepiphyte, Fern, NEW_latex, NEW_resin)
-end_cor <- cor(to_cor, use="na.or.complete")
+                                 f_mass, f_fleshy, Liana, Palmera, Tree, Hemiepiphyte, NEW_latex, NEW_resin)
+end_cor <- cor(to_cor, use="na.or.complete", method="pearson") 
 end_cor_table <- qflextable(rownames_to_column((round(as.data.frame(end_cor), 2))))
+
+# Add significance values
+cor_matrix_r <- round(cor(to_cor, use="na.or.complete", method="pearson"),2)
+pvalue_matrix <- round(rcorr(as.matrix(to_cor))$P, 5)
+colnames(cor_matrix_r) <- c("LT", "LA", "SLA", "WD", "DBH", "SM", "Fleshy", "Liana", "Palm", "Tree", "Hemiep.", "Latex", "Resin")
+rownames(cor_matrix_r) <- c("LT", "LA", "SLA", "WD", "DBH", "SM", "Fleshy", "Liana", "Palm", "Tree", "Hemiep.", "Latex", "Resin")
+colnames(pvalue_matrix) <- c("LT", "LA", "SLA", "WD", "DBH", "SM", "Fleshy", "Liana", "Palm", "Tree", "Hemiep.", "Latex", "Resin")
+rownames(pvalue_matrix) <- c("LT", "LA", "SLA", "WD", "DBH", "SM", "Fleshy", "Liana", "Palm", "Tree", "Hemiep.", "Latex", "Resin")
+table_matrix <- matrix("", nrow = nrow(cor_matrix_r), ncol = ncol(cor_matrix_r))
+
+# Loop through the matrices and add "*" where p-value is under the threshold
+for (i in 1:nrow(cor_matrix_r)) {
+  for (j in 1:ncol(cor_matrix_r)) {
+    if (is.na(pvalue_matrix[i, j])) {
+      pvalue_matrix[i, j] <- "1"
+    } 
+    else if (pvalue_matrix[i, j] <= 0.01) {
+      table_matrix[i, j] <- paste(cor_matrix_r[i, j], "**")
+    } else if (pvalue_matrix[i, j] <= 0.05) {
+      table_matrix[i, j] <- paste(cor_matrix_r[i, j], "*")
+    } else {
+      table_matrix[i, j] <- as.character(cor_matrix_r[i, j])
+    }
+  }
+}
+
+table_df <- as.data.frame(table_matrix)
+rownames(table_df) <- rownames(cor_matrix_r)
+colnames(table_df) <- colnames(cor_matrix_r)
+qflextable(rownames_to_column(table_df))
+# print(qflextable(rownames_to_column(table_df)), preview="docx")
+
+# PCA
+variables_PCA <- dplyr::select (to_cor, c(1:6))
+names(variables_PCA)
+colnames(variables_PCA) <- c("LT", "LA", "SLA", "WD", "DBH", "SM")
+df <- na.omit(variables_PCA)
+df_pca <- prcomp(df, scale.=TRUE)
+df_out <- as.data.frame(df_pca$x)
+df_out$group <- sapply (strsplit(as.character(row.names(df)), "_"), "[[", 1)
+head(df_out)
+p<-ggplot(df_out,aes(x=PC1,y=PC2))
+p<-p+geom_point()
+pca_res <- prcomp(df, scale. = TRUE)
+factoextra::fviz_pca_var(pca_res, col.var = "black") + theme_classic()
+ggsave("PCA.png")
+print(pca_res)
+factoextra::get_eigenvalue(pca_res)
+factoextra::fviz_eig(pca_res, addlabels = TRUE)
+
 
 # Join Ethnobotany and Functional traits databases 
 uses <- df_etno
