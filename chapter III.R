@@ -16,6 +16,7 @@ library(lme4)
 library(MuMIn) 
 library(tidyr)
 library(purrr)
+library(Hmisc)
 
 # Data processing 
 
@@ -147,7 +148,7 @@ p<-ggplot(df_out,aes(x=PC1,y=PC2))
 p<-p+geom_point()
 pca_res <- prcomp(df, scale. = TRUE)
 factoextra::fviz_pca_var(pca_res, col.var = "black") + theme_classic()
-ggsave("PCA.png")
+#ggsave("PCA.png")
 print(pca_res)
 factoextra::get_eigenvalue(pca_res)
 factoextra::fviz_eig(pca_res, addlabels = TRUE)
@@ -1307,4 +1308,592 @@ Figure6.3 <- ggballoonplot(data_r_all, color = "R2", fill = "R2") +scale_color_g
 Figure6.3
 ggsave("r2_trait_2023.png", Figure6.3, width = 8,height = 8)
 ggsave("r2_trait_2023.svg", Figure6.3, width = 8,height = 8)
+
+
+
+
+# > # > # > # > # > # > # > # > # > # > # > # > # > 
+# > # > # > # > # > # > # > # > # > # > # > # > # > 
+# > # > # > # > # > # > # > # > # > # > # > # > # > 
+
+
+# > SUPPLEMENTARY Data Analysis RQ2
+# A. Analysis for the availability of all trait-species per community AS FIXED FACTOR!
+
+# 1. Continuous WD, SLA, LA, LT
+
+# SLA
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$SLA_mean),]
+glmer1 <- lm (SLA_mean ~ 1, data = traits_com_all_noNA, weights=rel)
+glmer2 <- lmer (SLA_mean ~ 1|Comunidad, data = traits_com_all_noNA, weights = rel)
+glmer2.2 <- lm (SLA_mean ~ Comunidad, data = traits_com_all_noNA, weights = rel)
+AIC (glmer1, glmer2.2, glmer2)
+#r.sla <- r.squaredGLMM(glmer2)
+r.sla <- summary(glmer2.2)$adj.r.squared
+
+# LA
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$LA_log),]
+glmer1 <- lm(LA_log ~ 1, data = traits_com_all_noNA, weights=rel)
+glmer2 <- lmer(LA_log ~ 1|Comunidad, data = traits_com_all_noNA, weights = rel)
+glmer2.2 <- lm (LA_log ~ Comunidad, data = traits_com_all_noNA, weights = rel)
+AIC (glmer1, glmer2.2, glmer2)
+r.la <- summary(glmer2.2)$adj.r.squared
+#r.la <- r.squaredGLMM(glmer2)
+
+# LT
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$GF_mean),]
+glmer1 <- lm(GF_mean ~ 1, data = traits_com_all_noNA, weights=rel)
+glmer2 <- lmer(GF_mean ~ 1|Comunidad, data = traits_com_all_noNA, weights = rel)
+glmer2.2 <- lm (GF_mean ~ Comunidad, data = traits_com_all_noNA, weights = rel)
+AIC (glmer1, glmer2.2, glmer2)
+r.lt <- summary(glmer2.2)$adj.r.squared
+
+# WD
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$DM_mean.y),]
+glmer1 <- lm(DM_mean.y ~ 1, data = traits_com_all_noNA, weights=rel)
+glmer2 <- lmer(DM_mean.y ~ 1|Comunidad, data = traits_com_all_noNA, weights = rel)
+glmer2.2 <- lm (DM_mean.y ~ Comunidad, data = traits_com_all_noNA, weights = rel)
+AIC (glmer1, glmer2.2, glmer2)
+r.wd <- summary(glmer2.2)$adj.r.squared
+
+# DBH
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$DBH_max),]
+glmer1 <- lm(DBH_max ~ 1, data = traits_com_all_noNA, weights=rel)
+glmer2 <- lmer(DBH_max ~ 1|Comunidad, data = traits_com_all_noNA, weights = rel)
+glmer2.2 <- lm (DBH_max ~ Comunidad, data = traits_com_all_noNA, weights = rel)
+AIC (glmer1, glmer2.2, glmer2)
+r.dbh <- summary(glmer2.2)$adj.r.squared
+
+# Fruit mass
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$f_mass),]
+glmer1 <- lm(f_mass ~ 1, data = traits_com_all_noNA, weights=rel)
+glmer2 <- lmer(f_mass ~ 1|Comunidad, data = traits_com_all_noNA, weights = rel)
+glmer2.2 <- lm (f_mass ~ Comunidad, data = traits_com_all_noNA, weights = rel)
+AIC (glmer1, glmer2.2, glmer2)
+r.mass <- summary(glmer2.2)$adj.r.squared
+
+
+# Create table
+continu<- as.data.frame(cbind(r.la, r.sla, r.lt, r.wd, r.dbh, r.mass))
+
+colnames(continu) <- c("LA","SLA", "LT", "WD", "DBH", "SEEDMASS")
+continu_ver <- t(continu)
+
+
+# 2. Binomial
+library(glmtoolbox)
+
+# Latex
+table(traits_com_all_noNA$NEW_latex)
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$NEW_latex ),]
+glmer1 <- glm(NEW_latex ~ 1, data = traits_com_all_noNA, family=binomial,  weights=rel)
+glmer2 <- lme4::glmer(NEW_latex ~ 1|Comunidad, data = traits_com_all_noNA, family=binomial,  weights=rel)
+glmer2.2 <- glm(NEW_latex ~ Comunidad, data = traits_com_all_noNA, family=binomial,  weights=rel)
+AIC (glmer1, glmer2.2, glmer2)
+# r.latex <-adjR2 (glmer2.2)
+r.latex <- 0
+#G2 = -2 * logLik(glmer1) + 2 * logLik(glmer2.2)
+#p.latex <- pchisq(as.numeric(G2), df=1, lower.tail=F)
+#with(summary(glmer2.2), 1 - deviance/null.deviance)
+#r.latex <- r.squaredGLMM(glmer2)
+
+# Resin
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$NEW_resin ),]
+glmer1 <- glm(NEW_resin ~ 1, data = traits_com_all_noNA, family=binomial,  weights=rel)
+glmer3 <- glmer(NEW_resin ~ 1|Comunidad, data = traits_com_all_noNA, family=binomial,  weights=rel)
+AIC (glmer1, glmer2)
+G2 = -2 * logLik(glmer1) + 2 * logLik(glmer2)
+p.resin <- pchisq(as.numeric(G2), df=1, lower.tail=F)
+r.resin <- r.squaredGLMM(glmer2)
+
+# Fleshy fruit
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$f_fleshy ),]
+glmer1 <- glm(f_fleshy ~ 1, data = traits_com_all_noNA, family=binomial,  weights=rel)
+glmer2 <- glmer(f_fleshy ~ 1|Comunidad, data = traits_com_all_noNA, family=binomial,  weights=rel)
+AIC (glmer1, glmer2)
+G2 = -2 * logLik(glmer1) + 2 * logLik(glmer2)
+p.nodules <- pchisq(as.numeric(G2), df=1, lower.tail=F)
+r.fleshy <- r.squaredGLMM(glmer2)
+
+# Join
+dumi <- cbind(r.fleshy[1,2], r.latex[1,2], r.resin[1,2])
+all1 <- as.data.frame(cbind(continu, dumi))
+rownames(all1) <- "value"
+colnames(dumi) <- c("FLESHY", "LATEX", "RESIN")
+
+# 3. Habit
+
+# Tree
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$Tree ),]
+glmer1 <- glm(f_fleshy ~ 1, data = traits_com_all_noNA, family=binomial,  weights=rel)
+glmer3 <- glmer(f_fleshy ~ 1|Comunidad, data = traits_com_all_noNA, family=binomial,  weights=rel)
+AIC (glmer1, glmer3)
+G2 = -2 * logLik(glmer1) + 2 * logLik(glmer3)
+p.tree <- pchisq(as.numeric(G2), df=1, lower.tail=F)
+r.tree <- r.squaredGLMM(glmer3)
+
+# Palm
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$Palmera ),]
+glmer1 <- glm(Palmera ~ 1, data = traits_com_all_noNA, family=binomial,  weights=rel)
+glmer3 <- glmer(Palmera ~ 1|Comunidad, data = traits_com_all_noNA, family=binomial,  weights=rel)
+AIC (glmer1, glmer3)
+G2 = -2 * logLik(glmer1) + 2 * logLik(glmer3)
+p.palmera <- pchisq(as.numeric(G2), df=1, lower.tail=F)
+r.palmera <- r.squaredGLMM(glmer3)
+
+# Liana
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$Liana ),]
+glmer1 <- glm(Liana ~ 1, data = traits_com_all_noNA, family=binomial,  weights=rel)
+glmer3 <- glmer(Liana ~ 1|Comunidad, data = traits_com_all_noNA, family=binomial,  weights=rel)
+AIC (glmer1, glmer3)
+G2 = -2 * logLik(glmer1) + 2 * logLik(glmer3)
+p.liana <- pchisq(as.numeric(G2), df=1, lower.tail=F)
+r.liana <- r.squaredGLMM(glmer3)
+
+# Hemiepiphyte
+traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$Hemiepiphyte ),]
+glmer1 <- glm(Hemiepiphyte ~ 1, data = traits_com_all_noNA, family=binomial,  weights=rel)
+glmer3 <- glmer(Hemiepiphyte ~ 1|Comunidad, data = traits_com_all_noNA, family=binomial,  weights=rel)
+AIC (glmer1, glmer3)
+G2 = -2 * logLik(glmer1) + 2 * logLik(glmer3)
+p.hemiepiphyte <- pchisq(as.numeric(G2), df=1, lower.tail=F)
+r.hemiepiphyte <- r.squaredGLMM(glmer3)
+
+# Join continuous, dumi and growth form
+dumi2 <- cbind(r.tree[1,2], r.palmera[1,2], r.liana[1,2], r.hemiepiphyte[1,2])
+colnames(dumi2) <- c("TREE", "PALM", "LIANA", "HEMIEPIPHYTE")
+all <- t(as.data.frame(cbind(continu, dumi, dumi2)))
+ALL <- round(all,3)
+
+
+
+# B. Analysis for similar selection among communities for each trait-service relation
+
+# 1. Stem
+traits_com <- traits_com_2
+stem_part <- c(traits_com$Part=="BARK_STEM" | traits_com$Part=="STEM"   | traits_com$Part=="BARK_ROOT"  | 
+                 traits_com$Part=="BARK"    | traits_com$Part=="SPINES" | traits_com$Part=="STEM_ENTIRE LEAF" | 
+                 traits_com$Part=="SPINES"| traits_com$Part=="ROOT_STEM")
+traits_com_stem <- traits_com[stem_part,]
+traits_com_stem <- traits_com_stem[!duplicated(traits_com_stem),]
+traits_com_stem <- traits_com_stem[!is.na(traits_com_stem$DM_mean.y),]
+categorydata <- traits_com_stem[traits_com_stem$Subcategory=="TOXIC",]
+categorydata <- categorydata %>%  group_by(Comunidad) %>%  filter(n_distinct(DM_mean.y) >= 3)
+
+if(nrow(categorydata)<=10){
+  r.wd <- 0
+} else {
+  glmer1 <- lm(DBH_max ~ 1, data = categorydata, weights=rel)
+  glmer3 <- lmer(DBH_max ~ 1|Comunidad, data = categorydata, weights = rel)
+  AIC(glmer1, glmer3)
+  r.squaredGLMM(glmer3)
+  if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+    r.wd <- r.squaredGLMM(glmer3)[1,2]
+  } else {
+    r.wd <- 0
+  }
+}
+
+r.trait <-rep(NULL)
+for (i in unique(traits_com_stem$Subcategory)) {
+  categorydata <- traits_com_stem[traits_com_stem$Subcategory==i,]
+  categorydata <- categorydata %>%  group_by(Comunidad) %>%  filter(n_distinct(DM_mean.y) >= 3)
+  if(nrow(categorydata)<=10){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- lm(DBH_max ~ 1, data = categorydata, weights=rel)
+    glmer3 <- lmer(DBH_max ~ 1|Comunidad, data = categorydata, weights = rel)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.wd <- r.trait
+
+# 2. Leaves
+traits_com <- traits_com_2
+leaf_part <- c(traits_com$Part=="ENTIRE LEAF" | traits_com$Part=="PETIOLE"| traits_com$Part=="BARK_ENTIRE LEAF" | 
+                 traits_com$Part=="BRACT"| traits_com$Part=="LEAF SHEATH" | traits_com$Part=="PALM HEART"| 
+                 traits_com$Part=="LEAF RACHIS" | traits_com$Part=="ENTIRE LEAF_FLOWER_FRUIT"| 
+                 traits_com$Part=="ENTIRE LEAF_FRUIT")
+traits_com_leaf <- traits_com[leaf_part,]
+traits_com_leaf <- traits_com_leaf[!duplicated(traits_com_leaf),]
+
+# SLA
+traits_com_leaf_SLA <- traits_com_leaf[!is.na(traits_com_leaf$SLA_mean),]
+r.trait <-rep(NULL)
+for (i in unique(traits_com_leaf_SLA$Subcategory)) {
+  categorydata <- traits_com_leaf_SLA[traits_com_leaf_SLA$Subcategory==i,]
+  categorydata <- categorydata %>%  group_by(Comunidad) %>%  filter(n_distinct(SLA_mean) >= 3)
+  if(nrow(categorydata)<=10){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- lm(SLA_mean ~ 1, data = categorydata, weights=rel)
+    glmer3 <- lmer(SLA_mean ~ 1|Comunidad, data = categorydata, weights = rel)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.sla <- r.trait
+
+# LA
+traits_com_leaf_LA <- traits_com_leaf[!is.na(traits_com_leaf$LA_log),]
+r.trait <-rep(NULL)
+for (i in unique(traits_com_leaf_LA$Subcategory)) {
+  categorydata <- traits_com_leaf_LA[traits_com_leaf_LA$Subcategory==i,]
+  categorydata <- categorydata %>%  group_by(Comunidad) %>%  filter(n_distinct(LA_log) >= 3)
+  if(nrow(categorydata)<=10){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- lm(LA_log ~ 1, data = categorydata, weights=rel)
+    glmer3 <- lmer(LA_log ~ 1|Comunidad, data = categorydata, weights = rel)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.la <- r.trait
+
+# LT
+traits_com_leaf_LT <- traits_com_leaf[!is.na(traits_com_leaf$GF_mean),]
+r.trait <- NULL
+for (i in unique(traits_com_leaf_LT$Subcategory)) {
+  categorydata <- traits_com_leaf_LT[traits_com_leaf_LT$Subcategory==i,]
+  categorydata <- categorydata %>%  group_by(Comunidad) %>%  filter(n_distinct(GF_mean) >= 3)
+  if(nrow(categorydata)<=10){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- lm(GF_mean ~ 1, data = categorydata, weights=rel)
+    glmer3 <- lmer(GF_mean ~ 1|Comunidad, data = categorydata, weights = rel)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.lt <- r.trait
+
+# 3. Fruit
+traits_com <- traits_com_2
+fruit_part <- c(traits_com$Part=="FRUIT" | traits_com$Part=="FLOWER"| traits_com$Part=="SEED" | 
+                  traits_com$Part=="FRUIT_SEED" | traits_com$Part=="INFRUTESCENCE"| traits_com$Part=="INFLORESCENCE")
+traits_fruit <- traits_com[fruit_part,]
+traits_fruit <- traits_fruit[!duplicated(traits_fruit),]
+
+# Fruit mass
+traits_fruit_SM <- traits_fruit[!is.na(traits_fruit$f_mass),]
+
+r.trait <- NULL
+for (i in unique(traits_fruit_SM$Subcategory)) {
+  categorydata <- traits_fruit_SM[traits_fruit_SM$Subcategory==i,]
+  categorydata <- categorydata %>%  group_by(Comunidad) %>%  filter(n_distinct(f_mass) >= 3)
+  if(nrow(categorydata)<=10){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- lm(f_mass ~ 1, data = categorydata, weights=rel)
+    glmer3 <- lmer(f_mass ~ 1|Comunidad, data = categorydata, weights = rel)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.mass <- r.trait
+
+# Fleshy
+
+r.trait <- NULL
+for (i in unique(traits_fruit_SM$Subcategory)) {
+  categorydata_1 <- traits_fruit_SM[traits_fruit_SM$Subcategory==i,]
+  sum_count <- categorydata_1  %>% 
+    filter(f_fleshy==1) %>% 
+    group_by(Comunidad) %>% 
+    tally()  %>% 
+    filter (n >= 3)
+  categorydata <- categorydata_1 %>%  filter(Comunidad %in% sum_count$Comunidad) 
+  if(nrow(sum_count)<=1){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- glm(f_fleshy ~ 1, data = categorydata, family=binomial,  weights=rel)
+    glmer3 <- glmer(f_fleshy ~ 1|Comunidad, data = categorydata, family=binomial,  weights=rel)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.fleshy <- r.trait
+
+# 4. All
+traits_com <- traits_com_2
+
+# DBH
+traits_com_DBH <- traits_com[!is.na(traits_com$DBH_max ),]
+r.trait <- NULL
+for (i in unique(traits_com_DBH$Subcategory)) {
+  categorydata <- traits_com_DBH[traits_com_DBH$Subcategory==i,]
+  categorydata <- categorydata %>%  group_by(Comunidad) %>%  filter(n_distinct(Species) >= 3)
+  if(nrow(categorydata)<=10){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- lm(f_mass ~ 1, data = categorydata, weights=rel)
+    glmer3 <- lmer(f_mass ~ 1|Comunidad, data = categorydata, weights = rel)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.dbh <- r.trait
+
+# Latex
+traits_com_LX <- traits_com[!is.na(traits_com$NEW_latex ),]
+r.trait <- NULL
+for (i in unique(traits_com_LX$Subcategory)) {
+  categorydata_1 <- traits_com_LX[traits_com_LX$Subcategory==i,]
+  sum_count <- categorydata_1  %>% 
+    filter(NEW_latex==1) %>% 
+    group_by(Comunidad) %>% 
+    tally()  %>% 
+    filter (n >= 3)
+  categorydata <- categorydata_1 %>%  filter(Comunidad %in% sum_count$Comunidad) 
+  if(nrow(sum_count)<=1){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- glm(NEW_latex ~ 1, data = categorydata, weights=rel,  family=binomial)
+    glmer3 <- glmer(NEW_latex ~ 1|Comunidad, data = categorydata, weights = rel,  family=binomial)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.latex <- r.trait
+
+# Resin
+traits_com <- traits_com_2
+traits_com_RS <- traits_com[!is.na(traits_com$NEW_resin ),]
+r.trait <- NULL
+for (i in unique(traits_com_RS$Subcategory)) {
+  categorydata_1 <- traits_com_RS[traits_com_RS$Subcategory==i,]
+  sum_count <- categorydata_1  %>% 
+    filter(NEW_resin==1) %>% 
+    group_by(Comunidad) %>% 
+    tally()  %>% 
+    filter (n >= 3)
+  categorydata <- categorydata_1 %>%  filter(Comunidad %in% sum_count$Comunidad) 
+  if(nrow(sum_count)<=1){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- glm(NEW_resin ~ 1, data = categorydata, weights=rel,  family=binomial)
+    glmer3 <- glmer(NEW_resin ~ 1|Comunidad, data = categorydata, weights = rel,  family=binomial)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.resin <- r.trait
+
+# Tree
+traits_com <- traits_com_2
+r.trait <- rep(NULL)
+traits_com_TR <- traits_com[!is.na(traits_com$Tree),]
+for (i in unique(traits_com_TR$Subcategory)) {
+  categorydata_1 <- traits_com_TR[traits_com_TR$Subcategory==i,]
+  sum_count <- categorydata_1  %>% 
+    filter(Tree==1) %>% 
+    group_by(Comunidad) %>% 
+    tally()  %>% 
+    filter (n >= 3)
+  categorydata <- categorydata_1 %>%  filter(Comunidad %in% sum_count$Comunidad) 
+  if(nrow(sum_count)<=1){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- glm(Tree ~ 1, data = categorydata, weights=rel,  family=binomial)
+    glmer3 <- glmer(Tree ~ 1|Comunidad, data = categorydata, weights = rel,  family=binomial)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.tree <- r.trait
+
+# Palmera
+traits_com <- traits_com_2
+r.trait <- rep(NULL)
+traits_com_PL <- traits_com[!is.na(traits_com$Palmera),]
+for (i in unique(traits_com_PL$Subcategory)) {
+  categorydata_1 <- traits_com_PL[traits_com_PL$Subcategory==i,]
+  sum_count <- categorydata_1  %>% 
+    filter(Palmera==1) %>% 
+    group_by(Comunidad) %>% 
+    tally()  %>% 
+    filter (n >= 3)
+  categorydata <- categorydata_1 %>%  filter(Comunidad %in% sum_count$Comunidad) 
+  if(nrow(sum_count)<=1){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- glm(Palmera ~ 1, data = categorydata, weights=rel,  family=binomial)
+    glmer3 <- glmer(Palmera ~ 1|Comunidad, data = categorydata, weights = rel,  family=binomial)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.palm <- r.trait
+
+# Liana
+traits_com <- traits_com_2
+r.trait <- rep(NULL)
+traits_com_LN <- traits_com[!is.na(traits_com$Liana),]
+for (i in unique(traits_com_LN$Subcategory)) {
+  categorydata_1 <- traits_com_LN[traits_com_LN$Subcategory==i,]
+  sum_count <- categorydata_1  %>% 
+    filter(Liana==1) %>% 
+    group_by(Comunidad) %>% 
+    tally()  %>% 
+    filter (n >= 3)
+  categorydata <- categorydata_1 %>%  filter(Comunidad %in% sum_count$Comunidad) 
+  if(nrow(sum_count)<=1){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- glm(Liana ~ 1, data = categorydata, weights=rel,  family=binomial)
+    glmer3 <- glmer(Liana ~ 1|Comunidad, data = categorydata, weights = rel,  family=binomial)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.liana <- r.trait
+
+# Hemiepiphyte
+
+traits_com <- traits_com_2
+r.trait <- rep(NULL)
+traits_com_HM <- traits_com[!is.na(traits_com$Hemiepiphyte),]
+for (i in unique(traits_com_HM$Subcategory)) {
+  categorydata_1 <- traits_com_HM[traits_com_HM$Subcategory==i,]
+  sum_count <- categorydata_1  %>% 
+    filter(Hemiepiphyte==1) %>% 
+    group_by(Comunidad) %>% 
+    tally()  %>% 
+    filter (n >= 3)
+  categorydata <- categorydata_1 %>%  filter(Comunidad %in% sum_count$Comunidad) 
+  if(nrow(sum_count)<=1){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- glm(Hemiepiphyte ~ 1, data = categorydata, weights=rel,  family=binomial)
+    glmer3 <- glmer(Hemiepiphyte ~ 1|Comunidad, data = categorydata, weights = rel,  family=binomial)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.hemi <- r.trait
+
+for (i in unique(traits_com_HM$Subcategory)) {
+  categorydata_1 <- traits_com_HM[traits_com_HM$Subcategory==i,]
+  if(nrow(categorydata)<=10){
+    r.trait[i] <- 0
+  } else {
+    glmer1 <- glm(Hemiepiphyte ~ 1, data = categorydata, weights=rel,  family=binomial)
+    glmer3 <- glmer(Hemiepiphyte ~ 1|Comunidad, data = categorydata, weights = rel,  family=binomial)
+    AIC(glmer1, glmer3)
+    r.squaredGLMM(glmer3)
+    if (AIC(glmer1, glmer3)[1,2] > AIC(glmer1, glmer3)[2,2]) {
+      r.trait[i] <- r.squaredGLMM(glmer3)[1,2]
+    } else {
+      r.trait[i] <- 0
+    }
+  }
+}
+c.hemi <- r.trait
+
+
+# >Collect results
+
+# Trait-service
+list_all<-list(c.la, c.sla, c.lt, c.wd, c.dbh, c.mass, c.fleshy,  c.latex, c.resin, c.tree, c.palm, c.liana, c.hemi)
+names(list_all) <-c("LA","SLA", "LT", "WD", "DBH", "SEEDMASS", "FLESHY", "LATEX", "RESIN", "TREE", "PALM", "LIANA", "HEMIEPIPHYTE")
+list_data <- map(list_all, data.frame)
+list_data <- map(list_data, rownames_to_column)
+data_r <- do.call(rbind.data.frame, list_data)
+colnames(data_r) <- c("Category", "R2")
+data_r$R2 <- round(data_r$R2, 3)
+data_r <- rownames_to_column(data_r)
+data_r$rowname<-gsub("\\.[0-9]+","",data_r$rowname)
+
+# All data
+ALL1 <- ALL
+ALL1 <- as.data.frame(cbind(ALL,rep("ALL", 13)))
+ALL1 <- rownames_to_column(ALL1)
+ALL1 <- ALL1[,c(1,3,2)]
+colnames(ALL1) <- c("rowname", "Category", "R2")
+data_r_all <- rbind(data_r, ALL1)
+data_r_all$R2 <- as.numeric(data_r_all$R2)
+data_r_all[data_r_all$R2==0,] <- NA
+data_r_all <- data_r_all %>% drop_na(rowname) %>% filter(!Category=="NO USE")
+
+# Prepare to plot
+ORDER <- c("WD","DBH", "LA","SLA","LT","SEEDMASS","FLESHY" ,"LATEX","RESIN","TREE","PALM","LIANA","HEMIEPIPHYTE" )
+ORDER2 <- sort(unique(data_r_all$Category))
+
+# Plot figure 6.3.
+colorss <-  met.brewer("VanGogh3", 10)[1:10]
+Figure6.3 <- ggballoonplot(data_r_all, color = "R2", fill = "R2") +scale_color_gradientn(colors = colorss, guide="none")+
+  scale_fill_gradientn(colors = colorss)+scale_x_discrete(limits = ORDER)+scale_y_discrete(limits=ORDER2) + guides(col="none")
+
+Figure6.3
+ggsave("r2_trait_2023.png", Figure6.3, width = 8,height = 8)
+ggsave("r2_trait_2023.svg", Figure6.3, width = 8,height = 8)
+
+
 
