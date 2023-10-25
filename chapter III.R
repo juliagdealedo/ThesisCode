@@ -17,13 +17,24 @@ library(MuMIn)
 library(tidyr)
 library(purrr)
 library(Hmisc)
-
+devtools::install_github("ecoinfor/U.Taxonstand")
+library(U.Taxonstand)
 # Data processing 
 
 # Read database
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap3/data/dataraw")
 etno_original <- read_excel("etno-dis-mad-yas3.xlsx", sheet=1, col_names =T)
 etno <- etno_original %>% filter(!Comunidad=="Aguapolo")
+spList<-as.data.frame(unique(etno_original$Species))
+colnames(spList) <- "Name"
+head(spList)
+res <- nameMatch(spList=spList) 
+data("databaseExample")
+head(databaseExample)
+data("spExample")
+head(spExample)
+sessionInfo()
+
 
 # Create df use
 df_etno <- as.data.frame(unique(cbind(etno$Species, etno$`Plant part`, etno$Category, etno$Subcategory)))
@@ -640,6 +651,7 @@ ggsave("r1_trait_2023.svg", Figure6.2, width = 8, height = 8)
 # 6.3.2. Trait selection by Indigenous communities
 
 # Data processing including the Indigenous community
+setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap3/data/dataraw")
 etno_original <- read_excel("etno-dis-mad-yas3.xlsx", sheet=1, col_names =T)
 etno <- etno_original %>% filter(!Comunidad=="Aguapolo")
 aguapolo <- etno_original %>% filter(Comunidad=="Aguapolo")
@@ -744,6 +756,96 @@ traits_com_2 <- merge(traits_com, relative[,c(5,6)], by="combi")
 
 traits_com_all_2$f_mass<- as.numeric(traits_com_all_2$f_mass)
 traits_com_2$f_mass<- as.numeric(traits_com_2$f_mass)
+
+
+table_functional_range <- traits_com_all_2 %>%
+  group_by(Comunidad) %>%
+  dplyr::summarize(Mean_SLA = round(mean (SLA_mean, na.rm=TRUE),2),
+                   Min_SLA = round(min (SLA_mean, na.rm=TRUE),2),
+                   Max_SLA = round(max (SLA_mean, na.rm=TRUE),2),
+                   Species_SLA = length(unique(Species)),
+                   
+                   Mean_LA = round(mean (LA_mean, na.rm=TRUE),2),
+                   Min_LA = round(min (LA_mean, na.rm=TRUE),2),
+                   Max_LA = round(max (LA_mean, na.rm=TRUE),2),
+                   
+                   Mean_WD = round(mean (DM_mean.y, na.rm=TRUE),2),
+                   Min_WD = round(min (DM_mean.y, na.rm=TRUE),2),
+                   Max_WD = round(max (DM_mean.y, na.rm=TRUE),2),
+                   
+                   Mean_DBH = round(mean (DBH_max, na.rm=TRUE),2),
+                   Min_DBH = round(min (DBH_max, na.rm=TRUE),2),
+                   Max_DBH = round(max (DBH_max, na.rm=TRUE),2),
+                   
+                   Mean_LT = round(mean (GF_mean, na.rm=TRUE),2),
+                   Min_LT = paste0(round(min (GF_mean, na.rm=TRUE),2),", ",
+                                  round(max (GF_mean, na.rm=TRUE),2)),
+                   
+                   Mean_SM= round(mean (f_mass, na.rm=TRUE),2),
+                   Min_SM = round(min (f_mass, na.rm=TRUE),2),
+                   Max_SM = round(max (f_mass, na.rm=TRUE),2)
+                   )
+
+
+
+table_functional_range <- traits_com_all_2 %>%
+  group_by(Comunidad) %>%
+  dplyr::summarize(Mean_SLA = paste0(round(mean (SLA_mean, na.rm=TRUE),2)," (",
+                                    round(min (SLA_mean, na.rm=TRUE),2),", ",
+                                    round(max (SLA_mean, na.rm=TRUE),2), ")"),
+                   
+                   Mean_LA = paste0(round(mean (LA_mean, na.rm=TRUE),2)," (",
+                                     round(min (LA_mean, na.rm=TRUE),2),", ",
+                                     round(max (LA_mean, na.rm=TRUE),2), ")"),
+                   
+                   Mean_WD = paste0(round(mean (DM_mean.y, na.rm=TRUE),2)," (",
+                                     round(min (DM_mean.y, na.rm=TRUE),2),", ",
+                                     round(max (DM_mean.y, na.rm=TRUE),2), ")"),
+                   
+                   Mean_DBH = paste0(round(mean (DBH_max, na.rm=TRUE),2)," (",
+                                    round(min (DBH_max, na.rm=TRUE),2),", ",
+                                    round(max (DBH_max, na.rm=TRUE),2), ")"),
+                   
+                   Mean_LT = paste0(round(mean (GF_mean, na.rm=TRUE),2)," (",
+                                   round(min (GF_mean, na.rm=TRUE),2),", ",
+                                   round(max (GF_mean, na.rm=TRUE),2), ")"),
+    
+                   Mean_SM = paste0(round(mean (f_mass, na.rm=TRUE),2)," (",
+                                     round(min (f_mass, na.rm=TRUE),2),", ",
+                                     round(max (f_mass, na.rm=TRUE),2), ")"),
+                   
+  )
+
+functional_table <- qflextable (table_functional_range)
+print(functional_table, preview= "docx")
+
+
+functional_range <- as.data.frame(t(table_functional_range))
+functional_range$Traits <- rownames(as.data.frame(t(table_functional_range)))
+colnames(functional_range) <- functional_range[1,]
+functional_range <- functional_range %>%
+  relocate(Comunidad, .before = Bolivar) %>%
+  rename ("Traits" = "Comunidad")
+
+functional_table <- qflextable (as.data.frame(functional_range[-1,]))
+print(functional_table, preview= "docx")
+
+traits_good %>% dplyr::summarize(Mean_ind_SLA = sum (SLA_n, na.rm=TRUE)/length(na.omit(traits_good$SLA_n)),
+                                 Mean_ind_LA = sum (LA_n, na.rm=TRUE)/length(na.omit(traits_good$LA_n)),
+                                 Mean_ind_LT = sum (GF_n, na.rm=TRUE)/length(na.omit(traits_good$GF_n)),
+                                 Mean_ind_WD = sum (DM_n, na.rm=TRUE)/length(na.omit(traits_good$DM_n)),
+                                 Mean_ind_DBH = sum (DBH_n, na.rm=TRUE)/length(na.omit(traits_good$DBH_n))
+                                 
+                                 )
+
+# Number of individuals per species
+
+
+
+
+
+
+
 
 
 # > Data Analysis RQ2
@@ -1326,7 +1428,7 @@ ggsave("r2_trait_2023.svg", Figure6.3, width = 8,height = 8)
 traits_com_all_noNA <- traits_com_all_2[!is.na(traits_com_all_2$SLA_mean),]
 glmer1 <- lm (SLA_mean ~ 1, data = traits_com_all_noNA, weights=rel)
 glmer2 <- lmer (SLA_mean ~ 1|Comunidad, data = traits_com_all_noNA, weights = rel)
-glmer2.2 <- lm (SLA_mean ~ Comunidad, data = traits_com_all_noNA, weights = rel)
+glmer2.2 <- lm (SLA_mean ~ Comunidad, data = traits_com_all_noNA, weights = rel, family="gaussian")
 AIC (glmer1, glmer2.2, glmer2)
 #r.sla <- r.squaredGLMM(glmer2)
 r.sla <- summary(glmer2.2)$adj.r.squared
