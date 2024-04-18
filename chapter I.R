@@ -19,6 +19,8 @@ resulow<-resu[(resu$Forest=="Lowland Floodplain"),]
 resusub<-resu[(resu$Forest=="Submontane Terra firme"),]
 resufi<-resu[(resu$Forest=="Lowland Terra firme"),]
 
+species_thesis_jga <- unique(comp$Species)
+save(species_thesis_jga, file="species_jga.RData")
 # Calculations of the data present on the manuscript
 length(unique(resu$Plot)) # number of plots
 aggregate(resu$Plot, list(resu$Forest), length) # number of plots per forest type
