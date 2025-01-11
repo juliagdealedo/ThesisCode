@@ -156,7 +156,7 @@ set_flextable_defaults(
   border.color = "#CCCCCC",
   line_spacing = 1
 )
-custom_border <- fp_border(style = "solid", width=.2, color="#CCCCCC")
+custom_border <- officer::fp_border(style = "solid", width=.2, color="#CCCCCC")
 
 # Plot table S2
 TableThesis <- flextable(df_matrix) |> 
@@ -192,6 +192,7 @@ df <- comp_original %>%
 
 
 
+
 df <- df %>% drop_na()
 df_matrix <- reshape2::dcast(df , Family+Species~Region, value.var="count", fill=0)
 df_matrix <- df_matrix %>% mutate_if(is.numeric, str_replace_all, pattern = "0", replacement = " ")
@@ -207,6 +208,10 @@ length(unique(df_matrix$Species))
 
 colnames(df_matrix)[-c(1:2)] <- str_sub(colnames(df_matrix)[-c(1:2)], 3, -1)
 
+
+
+
+
 # Table settings
 set_flextable_defaults(
   font.size = 8,
@@ -214,7 +219,7 @@ set_flextable_defaults(
   border.color = "#CCCCCC",
   line_spacing = 1
 )
-custom_border <- fp_border(style = "solid", width=.2, color="#CCCCCC")
+custom_border <- officer::fp_border(style = "solid", width=.2, color="#CCCCCC")
 
 # Plot table S2
 
@@ -227,10 +232,26 @@ TableThesis <- flextable(df_matrix) |>
   border_inner_h( part="body", border = custom_border)|>
   rotate(j = 3:14, align = "bottom", rotation = "btlr", part = "header")|> 
   autofit()
-TableThesis
+
 
 
 #print(TableThesis, preview = "pdf")
 print(TableThesis, preview = "docx")
 #save_as_image(x = TableThesis, path = "/Users/juliag.dealedo/Desktop")
+
+
+
+# INFORME TAMBOPATA 2024
+df <- comp_original %>%
+  group_by(Family, Species, Region, Latitud, Longitud, Habit) %>%
+  summarise(count = n_distinct(Region))
+df = df[(df$Region=="F_Tambopata"),]
+df = df[,-c(3, 7)]
+TableInforme = flextable(df)  |>   italic(j = ~Species, italic = TRUE, part = "body")
+print(TableInforme, preview = "docx")
+
+df2 <- comp_original %>% filter(Region=="F_Tambopata")
+
+write.csv(df2, "data_tambopata.csv")
+
 
