@@ -1,7 +1,7 @@
 # R Script - Chapter III JGA Thesis
 # Date: 15/4/2023
 # Date revision: 27/07/2023
-
+# Date revision: 21/3/2025
 # Load necessary libraries
 
 library(readxl)
@@ -34,6 +34,17 @@ head(databaseExample)
 data("spExample")
 head(spExample)
 sessionInfo()
+colnames(etno_original)
+
+tablesup = etno %>%
+  select(informant, Comunidad) %>%
+  distinct() %>%
+  arrange(Comunidad) %>%
+  select(Comunidad)
+
+
+
+print(qflextable(rownames_to_column(tablesup)), preview="docx")
 
 
 # Create df use
@@ -114,10 +125,10 @@ to_cor <- traits_good %>% select(GF_mean, LA_log, SLA_mean, DM_mean.y, DBH_max,
                                  f_mass, f_fleshy, Liana, Palmera, Tree, Hemiepiphyte, NEW_latex, NEW_resin)
 end_cor <- cor(to_cor, use="na.or.complete", method="pearson") 
 end_cor_table <- qflextable(rownames_to_column((round(as.data.frame(end_cor), 2))))
-
 # Add significance values
+install.packages("Hmisc")
 cor_matrix_r <- round(cor(to_cor, use="na.or.complete", method="pearson"),2)
-pvalue_matrix <- round(rcorr(as.matrix(to_cor))$P, 5)
+pvalue_matrix <- round(Hmisc::rcorr(as.matrix(to_cor))$P, 5)
 colnames(cor_matrix_r) <- c("LT", "LA", "SLA", "WD", "DBH", "SM", "Fleshy", "Liana", "Palm", "Tree", "Hemiep.", "Latex", "Resin")
 rownames(cor_matrix_r) <- c("LT", "LA", "SLA", "WD", "DBH", "SM", "Fleshy", "Liana", "Palm", "Tree", "Hemiep.", "Latex", "Resin")
 colnames(pvalue_matrix) <- c("LT", "LA", "SLA", "WD", "DBH", "SM", "Fleshy", "Liana", "Palm", "Tree", "Hemiep.", "Latex", "Resin")
@@ -279,7 +290,7 @@ pvalue <- rep(NULL)
 coeff <- rep(NULL)
 aic <- rep(NULL)
 
-par(mfrow=c(3,6))
+par(mfrow=c(3,5))
 for (i in 1:14) { # GLM loop to obtain R2 of the relation WD-services
   glm_result_1 <- glm(STEM_SUB[,i]~DM_mean.y, data=GLM_STEM, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
@@ -287,7 +298,7 @@ for (i in 1:14) { # GLM loop to obtain R2 of the relation WD-services
   pvalue[i] <- ANOVAS$`Pr(>Chi)`[2]
   coeff[i] <- glm_result_1$coefficients[2]
   aic[i] <- glm_result_1$aic
-  visreg::visreg(glm_result_1, "DM_mean.y", scale="response", ylab=colnames(STEM_SUB)[i], mar=c(0,0,0,0))
+  visreg::visreg(glm_result_1, "DM_mean.y", scale="response", ylab=colnames(STEM_SUB)[i], xlab= "WD", mar=c(0,0,0,0))
 }
 DEV_STEM <- as.data.frame(cbind(names(STEM_SUB), round (deviance,3), round (pvalue,3), round (coeff,3)))
 colnames(DEV_STEM) <- c("Subcategory", "WD", "pWD", "coeff")
@@ -297,10 +308,14 @@ DEV_STEM$pWD <- as.numeric(DEV_STEM$pWD)
 DEV_STEM$coeff <- as.numeric(DEV_STEM$coeff)
 
 # 2. Leaves
+#GLM_LEAF = column_to_rownames(GLM_LEAF, var="Species")
+
 GLM_LEAF$LA_log<-log(GLM_LEAF$LA_mean)
 colnames(GLM_LEAF)
+
 LEAF_SUB <- GLM_LEAF[,c(1:15)]
 LEAF_SUB <- GLM_LEAF[,c(1:15)][,colSums(GLM_LEAF[,c(1:15)])>5]
+#LEAF_SUB = column_to_rownames(LEAF_SUB, var="Species")
 deviance_lt <- rep(NULL)
 deviance_la <- rep(NULL)
 deviance_sla <- rep(NULL)
@@ -312,51 +327,137 @@ pvalue_la <- rep(NULL)
 pvalue_sla <- rep(NULL)
 aic <- rep(NULL)
 
+# 2.1. LEAF THICKNESS
+par(mfrow=c(3,4))
 for (i in 1:length(LEAF_SUB)) {
-  glm_result_1 <- glm(LEAF_SUB[,i]~GF_mean+SLA_mean+LA_log, data=GLM_LEAF, family="binomial")
+  glm_result_1 <- glm(LEAF_SUB[,i]~GF_mean, data=GLM_LEAF, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
   deviance_lt[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
-  deviance_la[i] <- 100*(1-(ANOVAS$`Resid. Dev`[4]/ANOVAS$`Resid. Dev`[1]))
-  deviance_sla[i] <- 100*(1-(ANOVAS$`Resid. Dev`[3]/ANOVAS$`Resid. Dev`[1]))
   pvalue_lt[i] <- ANOVAS$`Pr(>Chi)`[2]
-  pvalue_la[i] <- ANOVAS$`Pr(>Chi)`[4]
-  pvalue_sla[i] <- ANOVAS$`Pr(>Chi)`[3]
   coeff_lt[i] <- glm_result_1$coefficients[2]
-  coeff_la[i] <- glm_result_1$coefficients[3]
-  coeff_sla[i] <- glm_result_1$coefficients[4]
   aic[i] <- glm_result_1$aic
-  visreg::visreg(glm_result_1, "GF_mean", scale="response", ylab=colnames(LEAF_SUB)[i], mar=c(0,0,0,0))
+  visreg::visreg(glm_result_1, "GF_mean", scale="response", ylab=colnames(LEAF_SUB)[i], xlab= "LT", mar=c(0,0,0,0))
 }
 
-DEV_LEAF <- as.data.frame(cbind(names(LEAF_SUB),
+DEV_LT <- as.data.frame(cbind(names(LEAF_SUB),
                                 round (deviance_lt,3),
-                                round (deviance_la,3),
-                                round (deviance_sla,3),
-                                round (deviance_leaf,3),
                                 round (pvalue_lt,3),
-                                round (pvalue_la,3),
-                                round (pvalue_sla,3),
-                                round (pvalue_leaf,3),
-                                round (coeff_lt,3),
-                                round (coeff_la,3),
-                                round (coeff_sla,3),
-                                round (coeff_leaf,3)))
+                                round (coeff_lt,3)))
 
-colnames(DEV_LEAF) <- c("Subcategory", "LT", "LA", "SLA", "LEAF", "pLT", "pLA", "pSLA", "pLEAF", "cLT", "cLA", "cSLA", "cLEAF")
-DEV_LEAF <- column_to_rownames(DEV_LEAF, var="Subcategory")
-DEV_LEAF$LT <- as.numeric(DEV_LEAF$LT)
-DEV_LEAF$LA <- as.numeric(DEV_LEAF$LA)
-DEV_LEAF$SLA <- as.numeric(DEV_LEAF$SLA)
-DEV_LEAF$LEAF <- as.numeric(DEV_LEAF$LEAF)
-DEV_LEAF$pLT <- as.numeric(DEV_LEAF$pLT)
-DEV_LEAF$pLA <- as.numeric(DEV_LEAF$pLA)
-DEV_LEAF$pSLA <- as.numeric(DEV_LEAF$pSLA)
-DEV_LEAF$pLEAF <- as.numeric(DEV_LEAF$pLEAF)
-DEV_LEAF$cLT <- as.numeric(DEV_LEAF$cLT)
-DEV_LEAF$cLA <- as.numeric(DEV_LEAF$cLA)
-DEV_LEAF$cSLA <- as.numeric(DEV_LEAF$cSLA)
-DEV_LEAF$cLEAF <- as.numeric(DEV_LEAF$cLEAF)
-DEV_LEAF
+colnames(DEV_LT) <- c("Subcategory", "LT", "pLT", "cLT")
+DEV_LT <- column_to_rownames(DEV_LT, var="Subcategory")
+DEV_LT$LT <- as.numeric(DEV_LT$LT)
+DEV_LT$pLT <- as.numeric(DEV_LT$pLT)
+DEV_LT$cLT <- as.numeric(DEV_LT$cLT)
+DEV_LT
+
+
+
+# 2.2. SLA
+par(mfrow=c(3,4))
+
+for (i in 1:length(LEAF_SUB)) {
+  glm_result_1 <- glm(LEAF_SUB[,i]~SLA_mean, data=GLM_LEAF, family="binomial")
+  ANOVAS <- anova(glm_result_1, test="Chi")
+  deviance_sla[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
+  pvalue_sla[i] <- ANOVAS$`Pr(>Chi)`[2]
+  coeff_sla[i] <- glm_result_1$coefficients[2]
+  aic[i] <- glm_result_1$aic
+  visreg::visreg(glm_result_1, "SLA_mean", scale="response", ylab=colnames(LEAF_SUB)[i], xlab="SLA", mar=c(0,0,0,0))
+}
+
+DEV_SLA <- as.data.frame(cbind(names(LEAF_SUB),
+                                round (deviance_sla,3),
+                                round (pvalue_sla,3),
+                                round (coeff_sla,3)))
+
+colnames(DEV_SLA) <- c("Subcategory", "SLA", "pSLA", "cSLA")
+DEV_SLA <- column_to_rownames(DEV_SLA, var="Subcategory")
+DEV_SLA$SLA <- as.numeric(DEV_SLA$SLA)
+DEV_SLA$pSLA <- as.numeric(DEV_SLA$pSLA)
+DEV_SLA$cSLA <- as.numeric(DEV_SLA$cSLA)
+DEV_SLA
+
+colnames(GLM_LEAF)
+GLM_LEAF$LA_log
+
+
+# 2.2. LA
+par(mfrow=c(3,4))
+for (i in 1:length(LEAF_SUB)) {
+  glm_result_1 <- glm(LEAF_SUB[,i]~LA_log, data=GLM_LEAF, family="binomial")
+  ANOVAS <- anova(glm_result_1, test="Chi")
+  deviance_la[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
+  pvalue_la[i] <- ANOVAS$`Pr(>Chi)`[2]
+  coeff_la[i] <- glm_result_1$coefficients[2]
+  aic[i] <- glm_result_1$aic
+  visreg::visreg(glm_result_1, "LA_log", scale="response", ylab=colnames(LEAF_SUB)[i], xlab="LA", mar=c(0,0,0,0))
+}
+
+DEV_LA <- as.data.frame(cbind(names(LEAF_SUB),
+                               round (deviance_la,3),
+                               round (pvalue_la,3),
+                               round (coeff_la,3)))
+
+colnames(DEV_LA) <- c("Subcategory", "LA", "pLA", "cLA")
+DEV_LA <- column_to_rownames(DEV_LA, var="Subcategory")
+DEV_LA$LA <- as.numeric(DEV_LA$LA)
+DEV_LA$pLA <- as.numeric(DEV_LA$pLA)
+DEV_LA$cLA <- as.numeric(DEV_LA$cLA)
+DEV_LA
+
+
+DEV_LEAF = cbind(DEV_LA, DEV_SLA, DEV_LT)
+
+###
+# 
+# 
+# 
+# for (i in 1:length(LEAF_SUB)) {
+#   glm_result_1 <- glm(LEAF_SUB[,i]~GF_mean+SLA_mean+LA_log, data=GLM_LEAF, family="binomial")
+#   ANOVAS <- anova(glm_result_1, test="Chi")
+#   deviance_lt[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
+#   deviance_la[i] <- 100*(1-(ANOVAS$`Resid. Dev`[4]/ANOVAS$`Resid. Dev`[1]))
+#   deviance_sla[i] <- 100*(1-(ANOVAS$`Resid. Dev`[3]/ANOVAS$`Resid. Dev`[1]))
+#   pvalue_lt[i] <- ANOVAS$`Pr(>Chi)`[2]
+#   pvalue_la[i] <- ANOVAS$`Pr(>Chi)`[4]
+#   pvalue_sla[i] <- ANOVAS$`Pr(>Chi)`[3]
+#   coeff_lt[i] <- glm_result_1$coefficients[2]
+#   coeff_la[i] <- glm_result_1$coefficients[3]
+#   coeff_sla[i] <- glm_result_1$coefficients[4]
+#   aic[i] <- glm_result_1$aic
+#   visreg::visreg(glm_result_1, "GF_mean", scale="response", ylab=colnames(LEAF_SUB)[i], mar=c(0,0,0,0))
+# }
+# 
+# DEV_LEAF <- as.data.frame(cbind(names(LEAF_SUB),
+#                                 round (deviance_lt,3),
+#                                 round (deviance_la,3),
+#                                 round (deviance_sla,3),
+#                                 round (deviance_leaf,3),
+#                                 round (pvalue_lt,3),
+#                                 round (pvalue_la,3),
+#                                 round (pvalue_sla,3),
+#                                 round (pvalue_leaf,3),
+#                                 round (coeff_lt,3),
+#                                 round (coeff_la,3),
+#                                 round (coeff_sla,3),
+#                                 round (coeff_leaf,3)))
+# 
+# colnames(DEV_LEAF) <- c("Subcategory", "LT", "LA", "SLA", "LEAF", "pLT", "pLA", "pSLA", "pLEAF", "cLT", "cLA", "cSLA", "cLEAF")
+# DEV_LEAF <- column_to_rownames(DEV_LEAF, var="Subcategory")
+# DEV_LEAF$LT <- as.numeric(DEV_LEAF$LT)
+# DEV_LEAF$LA <- as.numeric(DEV_LEAF$LA)
+# DEV_LEAF$SLA <- as.numeric(DEV_LEAF$SLA)
+# DEV_LEAF$LEAF <- as.numeric(DEV_LEAF$LEAF)
+# DEV_LEAF$pLT <- as.numeric(DEV_LEAF$pLT)
+# DEV_LEAF$pLA <- as.numeric(DEV_LEAF$pLA)
+# DEV_LEAF$pSLA <- as.numeric(DEV_LEAF$pSLA)
+# DEV_LEAF$pLEAF <- as.numeric(DEV_LEAF$pLEAF)
+# DEV_LEAF$cLT <- as.numeric(DEV_LEAF$cLT)
+# DEV_LEAF$cLA <- as.numeric(DEV_LEAF$cLA)
+# DEV_LEAF$cSLA <- as.numeric(DEV_LEAF$cSLA)
+# DEV_LEAF$cLEAF <- as.numeric(DEV_LEAF$cLEAF)
+# DEV_LEAF
 
 # 3. Fruit
 FRUIT_SUB <- GLM_FRUIT[,1:11][,colSums(GLM_FRUIT[,1:11])>5]
@@ -369,34 +470,90 @@ aic <- rep(NULL)
 coeff_seedmass<- rep(NULL)
 coeff_fleshy<- rep(NULL)
 
-par(mfrow=c(4,3))
+# FMASS
+
+par(mfrow=c(2,5))
 for (i in 1:10) {
-  glm_result_1 <- glm(FRUIT_SUB[,i]~f_mass+f_fleshy, data=GLM_FRUIT, family="binomial")
+  glm_result_1 <- glm(FRUIT_SUB[,i]~f_mass, data=GLM_FRUIT, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
   deviance_seedmass[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
-  deviance_fleshy[i] <- 100*(1-(ANOVAS$`Resid. Dev`[3]/ANOVAS$`Resid. Dev`[1]))
   pvalue_seedmass[i] <- ANOVAS$`Pr(>Chi)`[2]
-  pvalue_fleshy[i] <- ANOVAS$`Pr(>Chi)`[3]
   coeff_seedmass[i]<-glm_result_1$coefficients[2]
-  coeff_fleshy[i]<-glm_result_1$coefficients[3]
   aic[i] <- glm_result_1$aic
+  visreg::visreg(glm_result_1, "f_mass", scale="response", ylab=colnames(FRUIT_SUB)[i], xlab="Seed mass", mar=c(0,0,0,0))
+  
 }
-DEV_FRUIT <- as.data.frame(cbind(names(FRUIT_SUB), 
+DEV_MASS <- as.data.frame(cbind(names(FRUIT_SUB), 
                                  round (deviance_seedmass,3),
-                                 round (deviance_fleshy,3),
                                  round (pvalue_seedmass,3),
-                                 round (pvalue_fleshy,3), 
-                                 round (coeff_seedmass,3),
+                                 round (coeff_seedmass,3)))
+
+colnames(DEV_MASS) <- c("Subcategory", "SEEDMASS","pSEEDMASS","cSEEDMASS")
+DEV_MASS <- column_to_rownames(DEV_MASS, var="Subcategory")
+DEV_MASS$SEEDMASS <- as.numeric(DEV_MASS$SEEDMASS)
+DEV_MASS$pSEEDMASS <- as.numeric(DEV_MASS$pSEEDMASS)
+DEV_MASS$cSEEDMASS <- as.numeric(DEV_MASS$cSEEDMASS)
+
+# fleshyfruits
+par(mfrow=c(2,5))
+for (i in 1:10) {
+  glm_result_1 <- glm(FRUIT_SUB[,i]~f_fleshy, data=GLM_FRUIT, family="binomial")
+  ANOVAS <- anova(glm_result_1, test="Chi")
+  deviance_fleshy[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
+  pvalue_fleshy[i] <- ANOVAS$`Pr(>Chi)`[2]
+  coeff_fleshy[i]<-glm_result_1$coefficients[2]
+  aic[i] <- glm_result_1$aic
+  visreg::visreg(glm_result_1, "f_fleshy", scale="response", ylab=colnames(FRUIT_SUB)[i], xlab="Fleshy fruits", mar=c(0,0,0,0))
+
+}
+DEV_FLESHY <- as.data.frame(cbind(names(FRUIT_SUB),
+                                 round (deviance_fleshy,3),
+                                 round (pvalue_fleshy,3),
                                  round (coeff_fleshy,3)))
 
-colnames(DEV_FRUIT) <- c("Subcategory", "SEEDMASS", "FLESHY", "pSEEDMASS", "pFLESHY", "cSEEDMASS", "cFLESHY")
-DEV_FRUIT <- column_to_rownames(DEV_FRUIT, var="Subcategory")
-DEV_FRUIT$SEEDMASS <- as.numeric(DEV_FRUIT$SEEDMASS)
-DEV_FRUIT$FLESHY <- as.numeric(DEV_FRUIT$FLESHY)
-DEV_FRUIT$pSEEDMASS <- as.numeric(DEV_FRUIT$pSEEDMASS)
-DEV_FRUIT$pFLESHY <- as.numeric(DEV_FRUIT$pFLESHY)
-DEV_FRUIT$cSEEDMASS <- as.numeric(DEV_FRUIT$cSEEDMASS)
-DEV_FRUIT$cFLESHY <- as.numeric(DEV_FRUIT$cFLESHY)
+colnames(DEV_FLESHY) <- c("Subcategory", "FLESHY", "pFLESHY", "cFLESHY")
+DEV_FLESHY <- column_to_rownames(DEV_FLESHY, var="Subcategory")
+DEV_FLESHY$FLESHY <- as.numeric(DEV_FLESHY$FLESHY)
+DEV_FLESHY$pFLESHY <- as.numeric(DEV_FLESHY$pFLESHY)
+DEV_FLESHY$cFLESHY <- as.numeric(DEV_FLESHY$cFLESHY)
+
+DEV_FRUIT = cbind(DEV_MASS, DEV_FLESHY)
+
+DEV_FRUIT
+
+# par(mfrow=c(4,3))
+# for (i in 1:10) {
+#   glm_result_1 <- glm(FRUIT_SUB[,i]~f_mass+f_fleshy, data=GLM_FRUIT, family="binomial")
+#   ANOVAS <- anova(glm_result_1, test="Chi")
+#   deviance_seedmass[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
+#   deviance_fleshy[i] <- 100*(1-(ANOVAS$`Resid. Dev`[3]/ANOVAS$`Resid. Dev`[1]))
+#   pvalue_seedmass[i] <- ANOVAS$`Pr(>Chi)`[2]
+#   pvalue_fleshy[i] <- ANOVAS$`Pr(>Chi)`[3]
+#   coeff_seedmass[i]<-glm_result_1$coefficients[2]
+#   coeff_fleshy[i]<-glm_result_1$coefficients[3]
+#   aic[i] <- glm_result_1$aic
+#   visreg::visreg(glm_result_1, "LA_log", scale="response", ylab=colnames(LEAF_SUB)[i], xlab="LA", mar=c(0,0,0,0))
+#   
+# }
+# DEV_FRUIT <- as.data.frame(cbind(names(FRUIT_SUB),
+#                                  round (deviance_seedmass,3),
+#                                  round (deviance_fleshy,3),
+#                                  round (pvalue_seedmass,3),
+#                                  round (pvalue_fleshy,3),
+#                                  round (coeff_seedmass,3),
+#                                  round (coeff_fleshy,3)))
+# 
+# colnames(DEV_FRUIT) <- c("Subcategory", "SEEDMASS", "FLESHY", "pSEEDMASS", "pFLESHY", "cSEEDMASS", "cFLESHY")
+# DEV_FRUIT <- column_to_rownames(DEV_FRUIT, var="Subcategory")
+# DEV_FRUIT$SEEDMASS <- as.numeric(DEV_FRUIT$SEEDMASS)
+# DEV_FRUIT$FLESHY <- as.numeric(DEV_FRUIT$FLESHY)
+# DEV_FRUIT$pSEEDMASS <- as.numeric(DEV_FRUIT$pSEEDMASS)
+# DEV_FRUIT$pFLESHY <- as.numeric(DEV_FRUIT$pFLESHY)
+# DEV_FRUIT$cSEEDMASS <- as.numeric(DEV_FRUIT$cSEEDMASS)
+# DEV_FRUIT$cFLESHY <- as.numeric(DEV_FRUIT$cFLESHY)
+
+
+
 
 # 4. All
 ALL_SUB <- GLM_ALL[,1:14][,colSums(GLM_ALL[,1:14])>5]
@@ -407,7 +564,7 @@ deviance_dbh <- rep(NULL)
 pvalue_dbh <- rep(NULL)
 coeff_dbh <- rep(NULL)
 aic <- rep(NULL)
-par(mfrow=c(3,6))
+par(mfrow=c(3,5))
 for (i in 1:length(ALL_SUB)) {
   glm_result_1 <- glm(ALL_SUB[,i]~DBH_max, data=GLM_ALL, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
@@ -415,7 +572,7 @@ for (i in 1:length(ALL_SUB)) {
   pvalue_dbh[i] <- ANOVAS$`Pr(>Chi)`[2]
   coeff_dbh[i] <- glm_result_1$coefficients[2]
   aic[i] <- glm_result_1$aic
-  visreg::visreg(glm_result_1, "DBH_max", scale="response", ylab=colnames(STEM_SUB)[i], mar=c(0,0,0,0))
+  visreg::visreg(glm_result_1, "DBH_max", scale="response", ylab=colnames(ALL_SUB)[i], xlab="DBH", mar=c(0,0,0,0))
 }
 
 DEV_DBH <- as.data.frame(cbind(names(ALL_SUB), round (deviance_dbh,3), round (pvalue_dbh,3), round (coeff_dbh,3)))
@@ -436,35 +593,87 @@ pvalue_resin<-rep(NULL)
 coeff_latex<-rep(NULL)
 coeff_resin<-rep(NULL)
 
-par(mfrow=c(3,6))
+#latex
+par(mfrow=c(3,5))
 mar=c(0,0,0,0)
 for (i in 1:length(ALL_SUB)) {
-  glm_result_1 <- glm(ALL_SUB[,i]~NEW_latex+NEW_resin, data=GLM_ALL, family="binomial")
+  glm_result_1 <- glm(ALL_SUB[,i]~NEW_latex, data=GLM_ALL, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
   deviance_latex[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
-  deviance_resin[i] <- 100*(1-(ANOVAS$`Resid. Dev`[3]/ANOVAS$`Resid. Dev`[1]))
   pvalue_latex[i] <- ANOVAS$`Pr(>Chi)`[2]
-  pvalue_resin[i] <- ANOVAS$`Pr(>Chi)`[3]
   coeff_latex[i]<-glm_result_1$coefficients[2]
-  coeff_resin[i]<-glm_result_1$coefficients[3]
+  visreg::visreg(glm_result_1, "NEW_latex", scale="response", ylab=colnames(ALL_SUB)[i], xlab="Latex", mar=c(0,0,0,0))
+  
 }
 
-DEV_ALL <- as.data.frame(cbind(names(ALL_SUB), 
+DEV_LATEX <- as.data.frame(cbind(names(ALL_SUB), 
                                round (deviance_latex,3),
-                               round (deviance_resin,3),
                                round (pvalue_latex,3),
+                               round (coeff_latex,3)))
+
+colnames(DEV_LATEX) <- c("Subcategory", "LATEX", "pLATEX",  "cLATEX")
+DEV_LATEX <- column_to_rownames(DEV_LATEX, var="Subcategory")
+DEV_LATEX$LATEX<- as.numeric(DEV_LATEX$LATEX)
+DEV_LATEX$pLATEX <- as.numeric(DEV_LATEX$pLATEX)
+DEV_LATEX$cLATEX <- as.numeric(DEV_LATEX$cLATEX)
+
+
+#resin
+
+par(mfrow=c(3,5))
+mar=c(0,0,0,0)
+for (i in 1:length(ALL_SUB)) {
+  glm_result_1 <- glm(ALL_SUB[,i]~NEW_resin, data=GLM_ALL, family="binomial")
+  ANOVAS <- anova(glm_result_1, test="Chi")
+  deviance_resin[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
+  pvalue_resin[i] <- ANOVAS$`Pr(>Chi)`[2]
+  coeff_resin[i]<-glm_result_1$coefficients[2]
+  visreg::visreg(glm_result_1, "NEW_resin", scale="response", ylab=colnames(ALL_SUB)[i], xlab="Resin", mar=c(0,0,0,0))
+  
+}
+
+DEV_RESIN <- as.data.frame(cbind(names(ALL_SUB), 
+                               round (deviance_resin,3),
                                round (pvalue_resin,3),
-                               round (coeff_latex,3),
                                round (coeff_resin,3)))
 
-colnames(DEV_ALL) <- c("Subcategory", "LATEX", "RESIN", "pLATEX", "pRESIN",  "cLATEX", "cRESIN")
-DEV_ALL <- column_to_rownames(DEV_ALL, var="Subcategory")
-DEV_ALL$LATEX<- as.numeric(DEV_ALL$LATEX)
-DEV_ALL$RESIN <- as.numeric(DEV_ALL$RESIN)
-DEV_ALL$pLATEX <- as.numeric(DEV_ALL$pLATEX)
-DEV_ALL$pRESIN <- as.numeric(DEV_ALL$pRESIN)
-DEV_ALL$cLATEX <- as.numeric(DEV_ALL$cLATEX)
-DEV_ALL$cRESIN <- as.numeric(DEV_ALL$cRESIN)
+colnames(DEV_RESIN) <- c("Subcategory", "RESIN", "pRESIN", "cRESIN")
+DEV_RESIN <- column_to_rownames(DEV_RESIN, var="Subcategory")
+DEV_RESIN$RESIN <- as.numeric(DEV_RESIN$RESIN)
+DEV_RESIN$pRESIN <- as.numeric(DEV_RESIN$pRESIN)
+DEV_RESIN$cRESIN <- as.numeric(DEV_RESIN$cRESIN)
+
+DEV_ALL = cbind(DEV_LATEX, DEV_RESIN)
+# 
+# par(mfrow=c(3,6))
+# mar=c(0,0,0,0)
+# for (i in 1:length(ALL_SUB)) {
+#   glm_result_1 <- glm(ALL_SUB[,i]~NEW_latex+NEW_resin, data=GLM_ALL, family="binomial")
+#   ANOVAS <- anova(glm_result_1, test="Chi")
+#   deviance_latex[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
+#   deviance_resin[i] <- 100*(1-(ANOVAS$`Resid. Dev`[3]/ANOVAS$`Resid. Dev`[1]))
+#   pvalue_latex[i] <- ANOVAS$`Pr(>Chi)`[2]
+#   pvalue_resin[i] <- ANOVAS$`Pr(>Chi)`[3]
+#   coeff_latex[i]<-glm_result_1$coefficients[2]
+#   coeff_resin[i]<-glm_result_1$coefficients[3]
+# }
+# 
+# DEV_ALL <- as.data.frame(cbind(names(ALL_SUB), 
+#                                round (deviance_latex,3),
+#                                round (deviance_resin,3),
+#                                round (pvalue_latex,3),
+#                                round (pvalue_resin,3),
+#                                round (coeff_latex,3),
+#                                round (coeff_resin,3)))
+# 
+# colnames(DEV_ALL) <- c("Subcategory", "LATEX", "RESIN", "pLATEX", "pRESIN",  "cLATEX", "cRESIN")
+# DEV_ALL <- column_to_rownames(DEV_ALL, var="Subcategory")
+# DEV_ALL$LATEX<- as.numeric(DEV_ALL$LATEX)
+# DEV_ALL$RESIN <- as.numeric(DEV_ALL$RESIN)
+# DEV_ALL$pLATEX <- as.numeric(DEV_ALL$pLATEX)
+# DEV_ALL$pRESIN <- as.numeric(DEV_ALL$pRESIN)
+# DEV_ALL$cLATEX <- as.numeric(DEV_ALL$cLATEX)
+# DEV_ALL$cRESIN <- as.numeric(DEV_ALL$cRESIN)
 
 # Growth form
 GLM_ALL$Tree<- as.factor(GLM_ALL$Tree)
@@ -563,6 +772,7 @@ DEV_ALL2$cPALMERA <- as.numeric(DEV_ALL2$cPALMERA)
 DEV_ALL2$cLIANA <- as.numeric(DEV_ALL2$cLIANA)
 DEV_ALL2$cHEMIEPIPHYTE <- as.numeric(DEV_ALL2$cHEMIEPIPHYTE)
 DEV_ALL3 <- cbind(DEV_ALL, DEV_ALL2)
+as_tibble(DEV_LEAF)
 
 DEV_ALL3 <- rownames_to_column(DEV_ALL3)
 DEV_STEM <- rownames_to_column(DEV_STEM)
@@ -630,7 +840,7 @@ ORDER <- c("WD","DBH", "LA","SLA","LT","SEED MASS","FLESHY" ,"LATEX","RESIN", "T
 DEV5 <- arrange(DEV5, Var2.x)
 
 # Plot Figure 6.2.
-colorss <-  rev(met.brewer("Lakota", 9))[c(5,3)]
+colorss <-  rev(met.brewer("Lakota", 9))[c(5,9)]
 
 Figure6.2 <- ggballoonplot(DEV5,  col="positive", fill = "positive")+  
   scale_fill_manual(values = colorss, labels = c("Negative", "Positive"),name="")+
@@ -639,8 +849,8 @@ Figure6.2 <- ggballoonplot(DEV5,  col="positive", fill = "positive")+
   scale_y_discrete(limits = ORDER)
 Figure6.2
 
-ggsave("r1_trait_2023.png", Figure6.2, width = 8, height = 8)
-ggsave("r1_trait_2023.svg", Figure6.2, width = 8, height = 8)
+ggsave("r1_trait_2025.png", Figure6.2, width = 8, height = 8)
+ggsave("r1_trait_2025.svg", Figure6.2, width = 8, height = 8)
 
 
 
