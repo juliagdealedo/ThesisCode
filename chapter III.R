@@ -44,7 +44,7 @@ tablesup = etno %>%
 
 
 
-print(qflextable(rownames_to_column(tablesup)), preview="docx")
+#print(qflextable(rownames_to_column(tablesup)), preview="docx")
 
 
 # Create df use
@@ -126,7 +126,7 @@ to_cor <- traits_good %>% select(GF_mean, LA_log, SLA_mean, DM_mean.y, DBH_max,
 end_cor <- cor(to_cor, use="na.or.complete", method="pearson") 
 end_cor_table <- qflextable(rownames_to_column((round(as.data.frame(end_cor), 2))))
 # Add significance values
-install.packages("Hmisc")
+
 cor_matrix_r <- round(cor(to_cor, use="na.or.complete", method="pearson"),2)
 pvalue_matrix <- round(Hmisc::rcorr(as.matrix(to_cor))$P, 5)
 colnames(cor_matrix_r) <- c("LT", "LA", "SLA", "WD", "DBH", "SM", "Fleshy", "Liana", "Palm", "Tree", "Hemiep.", "Latex", "Resin")
@@ -312,10 +312,11 @@ DEV_STEM$coeff <- as.numeric(DEV_STEM$coeff)
 
 GLM_LEAF$LA_log<-log(GLM_LEAF$LA_mean)
 colnames(GLM_LEAF)
+GLM_LEAF$GF_log<-log(GLM_LEAF$GF_mean)
 
 LEAF_SUB <- GLM_LEAF[,c(1:15)]
 LEAF_SUB <- GLM_LEAF[,c(1:15)][,colSums(GLM_LEAF[,c(1:15)])>5]
-#LEAF_SUB = column_to_rownames(LEAF_SUB, var="Species")
+LEAF_SUB = column_to_rownames(LEAF_SUB, var="Species")
 deviance_lt <- rep(NULL)
 deviance_la <- rep(NULL)
 deviance_sla <- rep(NULL)
@@ -384,6 +385,7 @@ GLM_LEAF$LA_log
 
 # 2.2. LA
 par(mfrow=c(3,4))
+
 for (i in 1:length(LEAF_SUB)) {
   glm_result_1 <- glm(LEAF_SUB[,i]~LA_log, data=GLM_LEAF, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
@@ -460,6 +462,8 @@ DEV_LEAF = cbind(DEV_LA, DEV_SLA, DEV_LT)
 # DEV_LEAF
 
 # 3. Fruit
+GLM_FRUIT = column_to_rownames(GLM_FRUIT, var="Species")
+
 FRUIT_SUB <- GLM_FRUIT[,1:11][,colSums(GLM_FRUIT[,1:11])>5]
 GLM_FRUIT$f_fleshy <- as.factor(GLM_FRUIT$f_fleshy)
 deviance_seedmass <- rep(NULL)
@@ -701,25 +705,27 @@ coeff_fern<-rep(NULL)
 coeff_hemiepiphyte<-rep(NULL)
 
 # Independent variables
-
+par(mfrow=c(3,5))
 for (i in 1:length(ALL_SUB)) {
   glm_result_1 <- glm(ALL_SUB[,i]~Tree, data=GLM_ALL, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
   deviance_tree[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
   pvalue_tree[i] <- ANOVAS$`Pr(>Chi)`[2]
   coeff_tree[i]<-glm_result_1$coefficients[2]
+  visreg::visreg(glm_result_1, "Tree", scale="response", ylab=colnames(ALL_SUB)[i], xlab="Tree", mar=c(0,0,0,0))
   
 }
-
+par(mfrow=c(3,5))
 for (i in 1:length(ALL_SUB)) {
   glm_result_1 <- glm(ALL_SUB[,i]~Palmera, data=GLM_ALL, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
   deviance_palmera[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
   pvalue_palmera[i] <- ANOVAS$`Pr(>Chi)`[2]
   coeff_palmera[i]<-glm_result_1$coefficients[2]
+  visreg::visreg(glm_result_1, "Palmera", scale="response", ylab=colnames(ALL_SUB)[i], xlab="Palm", mar=c(0,0,0,0))
   
 }
-
+par(mfrow=c(3,5))
 for (i in 1:length(ALL_SUB)) {
   
   glm_result_1 <- glm(ALL_SUB[,i]~Liana, data=GLM_ALL, family="binomial")
@@ -727,15 +733,17 @@ for (i in 1:length(ALL_SUB)) {
   deviance_liana[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
   pvalue_liana[i] <- ANOVAS$`Pr(>Chi)`[2]
   coeff_liana[i]<-glm_result_1$coefficients[2]
+  visreg::visreg(glm_result_1, "Liana", scale="response", ylab=colnames(ALL_SUB)[i], xlab="Liana", mar=c(0,0,0,0))
+  
 }
-
+par(mfrow=c(3,5))
 for (i in 1:length(ALL_SUB)) {
   glm_result_1 <- glm(ALL_SUB[,i]~Hemiepiphyte, data=GLM_ALL, family="binomial")
   ANOVAS <- anova(glm_result_1, test="Chi")
   deviance_hemiepiphyte[i] <- 100*(1-(ANOVAS$`Resid. Dev`[2]/ANOVAS$`Resid. Dev`[1]))
   pvalue_hemiepiphyte[i] <- ANOVAS$`Pr(>Chi)`[2]
   coeff_hemiepiphyte[i]<-glm_result_1$coefficients[2]  
-  # visreg(glm_result_1, "Hemiepiphyte", scale="response", ylab=colnames(ALL_SUB)[i], mar=c(0,0,0,0))
+  visreg::visreg(glm_result_1, "Hemiepiphyte", scale="response", ylab=colnames(ALL_SUB)[i], xlab="Hemiepyphyte", mar=c(0,0,0,0))
   
 }
 
@@ -788,6 +796,11 @@ DEV1 <- merge(DEV1, DEV_DBH, by="rowname",all=T)
 DEV1 <- column_to_rownames(DEV1, var="rowname")
 DEV1[is.na(DEV1)] <- 0
 colnames(DEV1)
+df_sup = rownames_to_column(DEV1)
+
+df_sup_qf = qflextable(df_sup)
+#print(df_sup_qf, preview= "docx")
+
 
 # Save p values and coefficients to other tables
 DEVp <- DEV1[grepl("p", names(DEV1), fixed=TRUE)]
@@ -852,7 +865,7 @@ Figure6.2
 ggsave("r1_trait_2025.png", Figure6.2, width = 8, height = 8)
 ggsave("r1_trait_2025.svg", Figure6.2, width = 8, height = 8)
 
-
+dir()
 
 
 
