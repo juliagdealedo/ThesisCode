@@ -1,3 +1,4 @@
+
 # R Script - Chapter III JGA Thesis
 # Date: 15/4/2023
 # Date revision: 27/07/2023
@@ -17,7 +18,7 @@ library(MuMIn)
 library(tidyr)
 library(purrr)
 library(Hmisc)
-devtools::install_github("ecoinfor/U.Taxonstand")
+#devtools::install_github("ecoinfor/U.Taxonstand")
 library(U.Taxonstand)
 # Data processing 
 
@@ -25,16 +26,16 @@ library(U.Taxonstand)
 setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap3/data/dataraw")
 etno_original <- read_excel("etno-dis-mad-yas3.xlsx", sheet=1, col_names =T)
 etno <- etno_original %>% filter(!Comunidad=="Aguapolo")
-spList<-as.data.frame(unique(etno_original$Species))
-colnames(spList) <- "Name"
-head(spList)
-res <- nameMatch(spList=spList) 
-data("databaseExample")
-head(databaseExample)
-data("spExample")
-head(spExample)
-sessionInfo()
-colnames(etno_original)
+# spList<-as.data.frame(unique(etno_original$Species))
+# colnames(spList) <- "Name"
+# head(spList)
+# res <- nameMatch(spList=spList) 
+# data("databaseExample")
+# head(databaseExample)
+# data("spExample")
+# head(spExample)
+# sessionInfo()
+# colnames(etno_original)
 
 tablesup = etno %>%
   select(informant, Comunidad) %>%
@@ -49,6 +50,8 @@ tablesup = etno %>%
 
 # Create df use
 df_etno <- as.data.frame(unique(cbind(etno$Species, etno$`Plant part`, etno$Category, etno$Subcategory)))
+df_etno_phy <- as.data.frame(unique(cbind(etno$Species, etno$Genus, etno$Family, etno$`Plant part`, etno$Category, etno$Subcategory)))
+
 colnames(df_etno) <- c("Species", "Part", "Category", "Subcategory")
 df_etno <- df_etno %>% replace_na(list(Part = 'NO USE', Category = 'NO USE', Subcategory='NO USE'))
 
@@ -176,6 +179,7 @@ factoextra::get_eigenvalue(pca_res)
 factoextra::fviz_eig(pca_res, addlabels = TRUE)
 
 
+
 # Join Ethnobotany and Functional traits databases 
 uses <- df_etno
 traits_com <- merge(traits_good, uses, by="Species")
@@ -279,6 +283,186 @@ GLM_STEM <- column_to_rownames(GLM_STEM,var="Species")
 GLM_LEAF <- column_to_rownames(GLM_LEAF,var="Species")
 GLM_FRUIT <- column_to_rownames(GLM_FRUIT,var="Species")
 GLM_ALL <- column_to_rownames(GLM_ALL,var="Species")
+
+
+
+
+
+# Phylogenetic analysis from revision
+library(stringr)
+library(picante)
+library(phytools)
+library(V.PhyloMaker)
+# devtools::install_github("jinyizju/V.PhyloMaker")
+
+# create phylogeny
+Spp_trait_data_info <- df_etno_phy
+List_spp_phylo <- Spp_trait_data_info[,1:3]
+List_spp_phylo <- List_spp_phylo[!duplicated(List_spp_phylo$V1),]
+names(List_spp_phylo)[names(List_spp_phylo) == 'V1'] <- 'Species'
+List_spp_phylo <- List_spp_phylo[,c(1,2,3)]
+
+phylo_tree <- phylo.maker(List_spp_phylo, tree = GBOTB.extended, nodes = nodes.info.1, 
+                          output.sp.list = TRUE, output.tree = FALSE, scenarios = "S3", r = 1)
+
+plot(phylo_tree$scenario.3)
+
+# How related phylogenetically are species according to their USE
+
+bev = GLM_ALL[,1:17]
+bev=column_to_rownames(bev, var="Species")
+bev <- as.data.frame(t(bev))
+
+# Calculate PD, MPD and MNTD to each trait
+result_ok_PD <- ses.pd(bev, phylo_tree$scenario.3, runs=999)
+result_ok_MPD <- ses.mpd(bev, cophenetic(phylo_tree$scenario.3), runs=999)
+result_ok_MNTD <- ses.mntd(bev, cophenetic(phylo_tree$scenario.3), runs=999)
+
+
+setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Colaboraciones tesis/PeopleandNature_cap3/PAN_revision2/phylo_signal")
+# MDP
+result_ok_MPD = round(result_ok_MPD, 2)
+results_MPD <- rownames_to_column(result_ok_MPD, var="Use")
+qflextable(results_MPD) %>%
+  theme_vanilla() %>%
+  save_as_docx(path = "results_MPD.docx")
+
+#MNTD
+result_ok_MNTD = round(result_ok_MNTD, 2)
+results_MNTD <- rownames_to_column(result_ok_MNTD, var="Use")
+qflextable(results_MNTD) %>%
+  theme_vanilla() %>%
+  save_as_docx(path = "results_MNTD.docx")
+
+
+
+# How related phylogenetically are species according to their TRAITS
+
+traits = GLM_ALL %>% select(GF_mean,
+                   LA_log,
+                   SLA_mean,
+                   NEW_latex,
+                   NEW_resin,
+                   DBH_max,
+                   DM_mean.y,
+                   Hemiepiphyte,
+                   Liana,
+                   Palmera, Tree, f_mass, f_fleshy)
+
+spp_traits = ifelse(is.na(traits)==TRUE, 0, 1)
+rownames(spp_traits) = GLM_ALL$Species
+spp_traits <- as.data.frame(t(spp_traits))
+
+# Calculate PD, MPD and MNTD to each trait
+result_traits <- ses.pd(spp_traits, phylo_tree$scenario.3, runs=999)
+result_traits_MPD <- ses.mpd(spp_traits, cophenetic(phylo_tree$scenario.3), runs=999)
+result_traits_MNTD <- ses.mntd(spp_traits, cophenetic(phylo_tree$scenario.3), runs=999)
+
+
+
+setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Colaboraciones tesis/PeopleandNature_cap3/PAN_revision2/phylo_signal")
+# MDP
+result_traits_MPD = round(result_traits_MPD, 2)
+result_traits_MPD <- rownames_to_column(result_traits_MPD, var="Trait")
+qflextable(result_traits_MPD) %>%
+  theme_vanilla() %>%
+  save_as_docx(path = "result_traits_MPD.docx")
+
+#MNTD
+result_traits_MNTD = round(result_traits_MNTD, 2)
+result_traits_MNTD <- rownames_to_column(result_traits_MNTD, var="Trait")
+qflextable(result_traits_MNTD) %>%
+  theme_vanilla() %>%
+  save_as_docx(path = "result_traits_MNTD.docx")
+
+
+
+
+
+
+# How related phylogenetically are species according to their TRAITS
+
+traits = GLM_ALL %>% select(GF_mean,
+                            LA_log,
+                            SLA_mean,
+                            NEW_latex,
+                            NEW_resin,
+                            DBH_max,
+                            DM_mean.y,
+                            Hemiepiphyte,
+                            Liana,
+                            Palmera, Tree, f_mass, f_fleshy)
+
+spp_traits_miss = ifelse(is.na(traits)==TRUE, 1, 0)
+rownames(spp_traits_miss) = GLM_ALL$Species
+spp_traits_miss <- as.data.frame(t(spp_traits_miss))
+
+# Calculate PD, MPD and MNTD to each trait
+result_traits_miss <- ses.pd(spp_traits_miss, phylo_tree$scenario.3, runs=999)
+result_traits_MPD_miss <- ses.mpd(spp_traits_miss, cophenetic(phylo_tree$scenario.3), runs=999)
+result_traits_MNTD_miss <- ses.mntd(spp_traits_miss, cophenetic(phylo_tree$scenario.3), runs=999)
+
+
+
+setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Colaboraciones tesis/PeopleandNature_cap3/PAN_revision2/phylo_signal")
+# MDP
+result_traits_MPD_miss = round(result_traits_MPD_miss, 2)
+result_traits_MPD_miss <- rownames_to_column(result_traits_MPD_miss, var="Trait")
+qflextable(result_traits_MPD_miss) %>%
+  theme_vanilla() %>%
+  save_as_docx(path = "result_traits_MPD_miss.docx")
+
+#MNTD
+result_traits_MNTD_miss = round(result_traits_MNTD_miss, 2)
+result_traits_MNTD_miss <- rownames_to_column(result_traits_MNTD_miss, var="Trait")
+qflextable(result_traits_MNTD_miss) %>%
+  theme_vanilla() %>%
+  save_as_docx(path = "result_traits_MNTD_miss.docx")
+
+
+save(result_traits_MNTD_miss, result_traits_MPD_miss, result_traits_MNTD, result_traits_MPD, result_ok_MNTD, result_ok_MPD, 
+     file = "MNTDandMPD.RData")
+load("D_estimator_spp_data.RData")
+
+setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Colaboraciones tesis/PeopleandNature_cap3/PAN_revision2/phylo_signal")
+# MDP
+result_ok_MPD = round(result_ok_MPD, 2)
+results_MPD <- rownames_to_column(result_ok_MPD, var="Use")
+qflextable(results_MPD) %>%
+  theme_vanilla() %>%
+  save_as_docx(path = "results_MPD.docx")
+
+#MNTD
+result_ok_MNTD = round(result_ok_MNTD, 2)
+results_MNTD <- rownames_to_column(result_ok_MNTD, var="Use")
+qflextable(results_MNTD) %>%
+  theme_vanilla() %>%
+  save_as_docx(path = "results_MNTD.docx")
+
+
+
+# Order data with the continuous variable to the same order of the tree
+
+spp_order <- as.data.frame(phylo_tree$scenario.3$tip.label)
+spp_order$`phylo_tree$scenario.3$tip.label` <- gsub("_"," ", spp_order$`phylo_tree$scenario.3$tip.label`)
+rownames(GLM_ALL) <- NULL
+GLM_ALL <- column_to_rownames(GLM_ALL,var="Species")
+GLM_ALL2 <- as.data.frame(GLM_ALL[match(spp_order$`phylo_tree$scenario.3$tip.label`,rownames(GLM_ALL)),])
+colnames(GLM_ALL2) <- "Reg Abundance"
+
+# Make lambda
+lambda_TF <- phylosig(phylo_tree$scenario.3, method="lambda", test=TRUE, GLM_ALL2$SLA_mean) 
+lambda_LA <- phylosig(phylo_tree$scenario.3, method="lambda", test=TRUE, GLM_ALL2$LA_log) 
+lambda_LT <- phylosig(phylo_tree$scenario.3, method="lambda", test=TRUE, GLM_ALL2$GF_mean) 
+lambda_WD <- phylosig(phylo_tree$scenario.3, method="lambda", test=TRUE, GLM_ALL2$DM_mean.y) 
+lambda_DBH <- phylosig(phylo_tree$scenario.3, method="lambda", test=TRUE, GLM_ALL2$DBH_max) 
+
+
+save(lambda_TF, lambda_LT, lambda_LA, lambda_WD, lambda_DBH,
+     file = "MNTDandMPD.RData")
+
+
+
 
 
 # > Data analysis 
@@ -560,7 +744,7 @@ DEV_FRUIT
 
 
 # 4. All
-ALL_SUB <- GLM_ALL[,1:14][,colSums(GLM_ALL[,1:14])>5]
+ALL_SUB <- GLM_ALL[,1:16][,colSums(GLM_ALL[,1:16])>5]
 
 # DBH max
 # Loop
@@ -854,6 +1038,8 @@ DEV5 <- arrange(DEV5, Var2.x)
 
 # Plot Figure 6.2.
 colorss <-  rev(met.brewer("Lakota", 9))[c(5,9)]
+sum(DEV5$significant==FALSE)
+sum(is.na(DEV5$D2)==FALSE)/length(DEV5$D2)
 
 Figure6.2 <- ggballoonplot(DEV5,  col="positive", fill = "positive")+  
   scale_fill_manual(values = colorss, labels = c("Negative", "Positive"),name="")+

@@ -489,3 +489,96 @@ legend_tile  + bar_predominance
 ggsave ("Figure5.4.svg",height=10,width=8)
 ggsave ("Figure5.4.pdf",height=10,width=8)
 #
+
+
+
+
+
+
+
+
+
+# Chordiagram added on 25 march, from cap2.8.R, not cheked if works.
+df_etno <- etno %>% drop_na(Plot)
+
+especie2 <- unique(as.data.frame (cbind(df_etno$Comunidad, df_etno$Species, df_etno$Category2, df_etno$Subcategory)))
+colnames(especie2) <- c("Comunidad", "Species", "Category", "Subcategory")
+
+
+# df_sp <- unique(as.data.frame (cbind(etno$Comunidad, etno$Species, etno$Use, etno$Category)))
+# colnames(df_sp) <- c("Comunidad", "Species", "Use", "Category")
+# df_sp1 <- df_sp %>% drop_na(Category)
+# 
+# df_use <- unique(as.data.frame (cbind(etno$Comunidad, etno$Use, etno$Category)))
+# colnames(df_use) <- c("Comunidad", "Use", "Category")
+# df_use1 <- df_use %>% drop_na(Category)
+
+com_cord <- reshape2::dcast(especie2, Comunidad~Category, value.var="Species", fill=0)
+com_cord <- column_to_rownames(com_cord,var="Comunidad")
+reshape2::melt(com_cord)
+anova(com_cord$CONSTRUCTION)
+anova(com)
+grid.col = c( SanCarlos = "#FF7F00", Dicaro="#B2DF8A", Guiyero="#33A02C", Infierno = "#CB6856",Macahua = "#6A3D9A",
+              NuevaVida = "#FDBF6F", Bolivar = "#1F78B4", Tumupasa = "#CAB2D6", Yamino = "#A6CEE3")
+cols <- grid.col[as.factor(resu$Community)]
+
+rownames(com_cord) <- c("Bolivar", "Dicaro", "Guiyero", "Infierno", "Macahua", "NuevaVida", "SanCarlos", "Tumupasa", "Yamino")
+row_order <- c("Dicaro", "Guiyero", "Yamino", "Bolivar", "SanCarlos", "NuevaVida", "Infierno", "Macahua", "Tumupasa")
+
+colnames(com_cord) <- c("Animal Food", "Construction", "Cultural", "Environmental", "Fuel", "Human Food", "Medicinal", "Other", "Toxic", "Utensils and Tools")
+mat1 <-as.matrix(com_cord)
+as.data.frame(colSums(mat1))
+#col_order <- rownames(as.data.frame(colSums(mat1)) %>% arrange(desc(colSums(mat1))))
+col_order <- c("CONSTRUCTION", "UTENSILS", "CULTURAL", "FOOD", "MEDICINAL", "FUEL")
+mat2 <- mat1[, col_order]
+#row_order <- rownames(as.data.frame(rowSums(mat2)) %>% arrange(desc(rowSums(mat2))))
+mat3 <- mat2[row_order,]
+#mat3 <- mat1
+mat5<-mat3/rowSums(mat3)*100
+mat6 <- as.matrix(mat5)
+mat6
+rowSums(mat6)
+
+
+mat7 <- ComGenR::rel(mat6, rel.type = "sum")*100
+mat8 <- as.data.frame(mat7)
+mat8
+colSums(mat7)
+mat6
+sd(mat6)
+# Calculate standard deviation of the relative percentaje of species each community allocate to each category
+desvest <- NULL
+meann <- NULL
+for (i in 1:10 ){
+  desvest[i] <- round(sd(mat3[,i]),2)
+  meann[i] <- round(mean(mat3[,i]),2)
+}
+
+table_op <- as_tibble(cbind(colnames(mat6), meann, desvest))
+colnames(table_op) <- c("Category", "Mean", "Standard Deviation")
+print(table_op)
+qflextable(table_op)
+sum(table_op$Mean)
+# Plot
+setwd("/Users/juliag.dealedo/ONE/UAM_Doctorado/Capitulos/cap2/figs/figs_2023")
+svg("chord_5.svg", height=8,width=8, pointsize=18)
+#pdf("chord_2.pdf", height=8,width=8, pointsize=12)
+
+par(cex = 0.8, mar = c(2, 2, 2, 2))
+circos.par(start.degree = 0)
+chordDiagram(mat6, symmetric=F, directional = 1, scale=F, grid.col=grid.col,
+             transparency = 0.1,annotationTrack = c("name", "grid"),
+             annotationTrackHeight = c(0.001, 0.05),
+             link.lwd = 1,    # Line width
+             link.lty = 1,    # Line type
+             link.border = 1,
+             #link.visible = mat3 >= 5, 
+             link.decreasing = T, link.zindex = rank(mat6))
+circos.clear()
+dev.off()
+
+
+
+
+
+
