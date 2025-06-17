@@ -109,6 +109,9 @@ traits_good <- merge(traits, fruits, by="Species")
 colnames(traits_good)
 traits_good[traits_good == "-99"] <- NA
 
+fruit_notfleshy=traits_good %>% filter (f_fleshy==0) %>% select (Species, f_mass)
+write.csv(fruit_notfleshy, "fruit_notfleshy.csv")
+dir()
 # No species from Aguapolo
 aguapolo <- etno_original %>% filter(Comunidad=="Aguapolo")
 str(aguapolo)
